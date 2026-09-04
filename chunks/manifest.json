@@ -1,0 +1,19 @@
+{
+  "fps": 10,
+  "duration": 36.2,
+  "total_frames": 362,
+  "profiles": {
+    "720p": {
+      "width": 1024,
+      "height": 576
+    },
+    "480p": {
+      "width": 854,
+      "height": 480
+    },
+    "360p": {
+      "width": 640,
+      "height": 360
+    }
+  }
+}
