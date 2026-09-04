@@ -14,7 +14,7 @@ INPUT_VIDEO = "video.mp4"
 OUTPUT_DIR = Path("chunks")
 
 # Video FPS
-FPS = 8
+FPS = 15
 
 # أقصى مدة
 MAX_SECONDS = 45
