@@ -22,11 +22,11 @@ MAX_SECONDS = 45
 
 # Shorts 9:16
 PROFILES = {
-    "180p": (180, 320),
+    "576p": (576, 1024),
 }
 
 # عدد الإطارات داخل كل chunk
-FRAMES_PER_CHUNK = 4
+FRAMES_PER_CHUNK = 2
 
 # Zstandard compression
 ZSTD_LEVEL = 3
