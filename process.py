@@ -1,4 +1,3 @@
-```python
 import cv2
 import json
 import math
@@ -715,4 +714,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-```
+
