@@ -2,14 +2,11 @@
   "fps": 8,
   "duration": 36.125,
   "total_frames": 289,
+  "aspect_ratio": "9:16",
   "profiles": {
-    "240p": {
-      "width": 426,
-      "height": 240
-    },
     "180p": {
-      "width": 320,
-      "height": 180
+      "width": 180,
+      "height": 320
     }
   }
 }

@@ -1,7 +1,8 @@
 {
   "profile": "180p",
-  "width": 320,
-  "height": 180,
+  "width": 180,
+  "height": 320,
+  "aspect_ratio": "9:16",
   "fps": 8,
   "total_frames": 289,
   "frames_per_chunk": 4,
@@ -11,5 +12,6 @@
   "compression": "zstd",
   "compression_level": 3,
   "raw_bytes": 33292800,
-  "compressed_bytes": 8143458
+  "compressed_bytes": 9524865,
+  "duration": 36.125
 }
