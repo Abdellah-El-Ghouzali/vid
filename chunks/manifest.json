@@ -8,8 +8,8 @@
     "total_frames": 543,
     "frames_per_chunk": 1,
     "chunks": 543,
-    "packs": 5,
-    "frames_per_pack": 109,
+    "packs": 25,
+    "frames_per_pack": 22,
     "format": "RGB565_LE",
     "bytes_per_pixel": 2,
     "compression": "zstd",
@@ -22,41 +22,201 @@
         "index": 0,
         "filename": "pack_000.bin",
         "start_frame": 0,
-        "frame_count": 109,
-        "end_frame": 108,
-        "bytes": 36745490
+        "frame_count": 22,
+        "end_frame": 21,
+        "bytes": 7748405
       },
       {
         "index": 1,
         "filename": "pack_001.bin",
-        "start_frame": 109,
-        "frame_count": 109,
-        "end_frame": 217,
-        "bytes": 30996192
+        "start_frame": 22,
+        "frame_count": 22,
+        "end_frame": 43,
+        "bytes": 8072487
       },
       {
         "index": 2,
         "filename": "pack_002.bin",
-        "start_frame": 218,
-        "frame_count": 109,
-        "end_frame": 326,
-        "bytes": 33438590
+        "start_frame": 44,
+        "frame_count": 22,
+        "end_frame": 65,
+        "bytes": 7420809
       },
       {
         "index": 3,
         "filename": "pack_003.bin",
-        "start_frame": 327,
-        "frame_count": 109,
-        "end_frame": 435,
-        "bytes": 30764525
+        "start_frame": 66,
+        "frame_count": 22,
+        "end_frame": 87,
+        "bytes": 6970103
       },
       {
         "index": 4,
         "filename": "pack_004.bin",
-        "start_frame": 436,
-        "frame_count": 107,
+        "start_frame": 88,
+        "frame_count": 22,
+        "end_frame": 109,
+        "bytes": 6804804
+      },
+      {
+        "index": 5,
+        "filename": "pack_005.bin",
+        "start_frame": 110,
+        "frame_count": 22,
+        "end_frame": 131,
+        "bytes": 6049238
+      },
+      {
+        "index": 6,
+        "filename": "pack_006.bin",
+        "start_frame": 132,
+        "frame_count": 22,
+        "end_frame": 153,
+        "bytes": 7786528
+      },
+      {
+        "index": 7,
+        "filename": "pack_007.bin",
+        "start_frame": 154,
+        "frame_count": 22,
+        "end_frame": 175,
+        "bytes": 7689673
+      },
+      {
+        "index": 8,
+        "filename": "pack_008.bin",
+        "start_frame": 176,
+        "frame_count": 22,
+        "end_frame": 197,
+        "bytes": 4460566
+      },
+      {
+        "index": 9,
+        "filename": "pack_009.bin",
+        "start_frame": 198,
+        "frame_count": 22,
+        "end_frame": 219,
+        "bytes": 5110148
+      },
+      {
+        "index": 10,
+        "filename": "pack_010.bin",
+        "start_frame": 220,
+        "frame_count": 22,
+        "end_frame": 241,
+        "bytes": 8622345
+      },
+      {
+        "index": 11,
+        "filename": "pack_011.bin",
+        "start_frame": 242,
+        "frame_count": 22,
+        "end_frame": 263,
+        "bytes": 10575367
+      },
+      {
+        "index": 12,
+        "filename": "pack_012.bin",
+        "start_frame": 264,
+        "frame_count": 22,
+        "end_frame": 285,
+        "bytes": 7004259
+      },
+      {
+        "index": 13,
+        "filename": "pack_013.bin",
+        "start_frame": 286,
+        "frame_count": 22,
+        "end_frame": 307,
+        "bytes": 3920190
+      },
+      {
+        "index": 14,
+        "filename": "pack_014.bin",
+        "start_frame": 308,
+        "frame_count": 22,
+        "end_frame": 329,
+        "bytes": 3443449
+      },
+      {
+        "index": 15,
+        "filename": "pack_015.bin",
+        "start_frame": 330,
+        "frame_count": 22,
+        "end_frame": 351,
+        "bytes": 3587174
+      },
+      {
+        "index": 16,
+        "filename": "pack_016.bin",
+        "start_frame": 352,
+        "frame_count": 22,
+        "end_frame": 373,
+        "bytes": 5808485
+      },
+      {
+        "index": 17,
+        "filename": "pack_017.bin",
+        "start_frame": 374,
+        "frame_count": 22,
+        "end_frame": 395,
+        "bytes": 7258078
+      },
+      {
+        "index": 18,
+        "filename": "pack_018.bin",
+        "start_frame": 396,
+        "frame_count": 22,
+        "end_frame": 417,
+        "bytes": 7195588
+      },
+      {
+        "index": 19,
+        "filename": "pack_019.bin",
+        "start_frame": 418,
+        "frame_count": 22,
+        "end_frame": 439,
+        "bytes": 7733252
+      },
+      {
+        "index": 20,
+        "filename": "pack_020.bin",
+        "start_frame": 440,
+        "frame_count": 22,
+        "end_frame": 461,
+        "bytes": 6484470
+      },
+      {
+        "index": 21,
+        "filename": "pack_021.bin",
+        "start_frame": 462,
+        "frame_count": 22,
+        "end_frame": 483,
+        "bytes": 6044785
+      },
+      {
+        "index": 22,
+        "filename": "pack_022.bin",
+        "start_frame": 484,
+        "frame_count": 22,
+        "end_frame": 505,
+        "bytes": 7289328
+      },
+      {
+        "index": 23,
+        "filename": "pack_023.bin",
+        "start_frame": 506,
+        "frame_count": 22,
+        "end_frame": 527,
+        "bytes": 7238306
+      },
+      {
+        "index": 24,
+        "filename": "pack_024.bin",
+        "start_frame": 528,
+        "frame_count": 15,
         "end_frame": 542,
-        "bytes": 32639281
+        "bytes": 4266321
       }
     ]
   }
