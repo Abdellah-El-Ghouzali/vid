@@ -58,7 +58,7 @@ jobs:
 
       - name: Verify output
         run: |
-          test -f chunks/180p/manifest.json
+          test -f chunks/576p/manifest.json
           find chunks -type f | sort
           echo ""
           echo "Output size:"
