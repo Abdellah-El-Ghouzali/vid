@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -21,10 +22,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install OpenCV
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install opencv-python-headless
+          pip install opencv-python-headless numpy zstandard
 
       - name: Process Video
         run: |
