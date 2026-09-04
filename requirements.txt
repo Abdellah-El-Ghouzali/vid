@@ -1,3 +1,3 @@
-opencv-python-headless
-numpy
-zstandard
+numpy==2.2.6
+opencv-python-headless==4.11.0.86
+zstandard==0.23.0
