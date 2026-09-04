@@ -20,7 +20,7 @@ MAX_SECONDS = 45
 
 # Portrait 9:16
 PROFILES = {
-    "180p": (180, 320),
+    "240p": (240, 426),
 }
 
 FRAMES_PER_CHUNK = 4
