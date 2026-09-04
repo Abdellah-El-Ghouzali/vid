@@ -1,7 +1,7 @@
 {
-  "fps": 8,
-  "duration": 36.125,
-  "total_frames": 289,
+  "fps": 15,
+  "duration": 36.2,
+  "total_frames": 543,
   "aspect_ratio": "9:16",
   "profiles": {
     "576p": {
