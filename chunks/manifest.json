@@ -4,9 +4,9 @@
   "total_frames": 289,
   "aspect_ratio": "9:16",
   "profiles": {
-    "180p": {
-      "width": 180,
-      "height": 320
+    "576p": {
+      "width": 576,
+      "height": 1024
     }
   }
 }

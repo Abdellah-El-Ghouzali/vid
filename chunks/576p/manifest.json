@@ -1,0 +1,17 @@
+{
+  "profile": "576p",
+  "width": 576,
+  "height": 1024,
+  "aspect_ratio": "9:16",
+  "fps": 8,
+  "total_frames": 289,
+  "frames_per_chunk": 2,
+  "chunks": 145,
+  "format": "RGB565_LE",
+  "bytes_per_pixel": 2,
+  "compression": "zstd",
+  "compression_level": 3,
+  "raw_bytes": 340918272,
+  "compressed_bytes": 71136963,
+  "duration": 36.125
+}
