@@ -21,200 +21,250 @@
       {
         "index": 0,
         "filename": "pack_000.bin",
+        "start_chunk": 0,
         "start_frame": 0,
         "frame_count": 22,
+        "end_chunk": 21,
         "end_frame": 21,
         "bytes": 7748405
       },
       {
         "index": 1,
         "filename": "pack_001.bin",
+        "start_chunk": 22,
         "start_frame": 22,
         "frame_count": 22,
+        "end_chunk": 43,
         "end_frame": 43,
         "bytes": 8072487
       },
       {
         "index": 2,
         "filename": "pack_002.bin",
+        "start_chunk": 44,
         "start_frame": 44,
         "frame_count": 22,
+        "end_chunk": 65,
         "end_frame": 65,
         "bytes": 7420809
       },
       {
         "index": 3,
         "filename": "pack_003.bin",
+        "start_chunk": 66,
         "start_frame": 66,
         "frame_count": 22,
+        "end_chunk": 87,
         "end_frame": 87,
         "bytes": 6970103
       },
       {
         "index": 4,
         "filename": "pack_004.bin",
+        "start_chunk": 88,
         "start_frame": 88,
         "frame_count": 22,
+        "end_chunk": 109,
         "end_frame": 109,
         "bytes": 6804804
       },
       {
         "index": 5,
         "filename": "pack_005.bin",
+        "start_chunk": 110,
         "start_frame": 110,
         "frame_count": 22,
+        "end_chunk": 131,
         "end_frame": 131,
         "bytes": 6049238
       },
       {
         "index": 6,
         "filename": "pack_006.bin",
+        "start_chunk": 132,
         "start_frame": 132,
         "frame_count": 22,
+        "end_chunk": 153,
         "end_frame": 153,
         "bytes": 7786528
       },
       {
         "index": 7,
         "filename": "pack_007.bin",
+        "start_chunk": 154,
         "start_frame": 154,
         "frame_count": 22,
+        "end_chunk": 175,
         "end_frame": 175,
         "bytes": 7689673
       },
       {
         "index": 8,
         "filename": "pack_008.bin",
+        "start_chunk": 176,
         "start_frame": 176,
         "frame_count": 22,
+        "end_chunk": 197,
         "end_frame": 197,
         "bytes": 4460566
       },
       {
         "index": 9,
         "filename": "pack_009.bin",
+        "start_chunk": 198,
         "start_frame": 198,
         "frame_count": 22,
+        "end_chunk": 219,
         "end_frame": 219,
         "bytes": 5110148
       },
       {
         "index": 10,
         "filename": "pack_010.bin",
+        "start_chunk": 220,
         "start_frame": 220,
         "frame_count": 22,
+        "end_chunk": 241,
         "end_frame": 241,
         "bytes": 8622345
       },
       {
         "index": 11,
         "filename": "pack_011.bin",
+        "start_chunk": 242,
         "start_frame": 242,
         "frame_count": 22,
+        "end_chunk": 263,
         "end_frame": 263,
         "bytes": 10575367
       },
       {
         "index": 12,
         "filename": "pack_012.bin",
+        "start_chunk": 264,
         "start_frame": 264,
         "frame_count": 22,
+        "end_chunk": 285,
         "end_frame": 285,
         "bytes": 7004259
       },
       {
         "index": 13,
         "filename": "pack_013.bin",
+        "start_chunk": 286,
         "start_frame": 286,
         "frame_count": 22,
+        "end_chunk": 307,
         "end_frame": 307,
         "bytes": 3920190
       },
       {
         "index": 14,
         "filename": "pack_014.bin",
+        "start_chunk": 308,
         "start_frame": 308,
         "frame_count": 22,
+        "end_chunk": 329,
         "end_frame": 329,
         "bytes": 3443449
       },
       {
         "index": 15,
         "filename": "pack_015.bin",
+        "start_chunk": 330,
         "start_frame": 330,
         "frame_count": 22,
+        "end_chunk": 351,
         "end_frame": 351,
         "bytes": 3587174
       },
       {
         "index": 16,
         "filename": "pack_016.bin",
+        "start_chunk": 352,
         "start_frame": 352,
         "frame_count": 22,
+        "end_chunk": 373,
         "end_frame": 373,
         "bytes": 5808485
       },
       {
         "index": 17,
         "filename": "pack_017.bin",
+        "start_chunk": 374,
         "start_frame": 374,
         "frame_count": 22,
+        "end_chunk": 395,
         "end_frame": 395,
         "bytes": 7258078
       },
       {
         "index": 18,
         "filename": "pack_018.bin",
+        "start_chunk": 396,
         "start_frame": 396,
         "frame_count": 22,
+        "end_chunk": 417,
         "end_frame": 417,
         "bytes": 7195588
       },
       {
         "index": 19,
         "filename": "pack_019.bin",
+        "start_chunk": 418,
         "start_frame": 418,
         "frame_count": 22,
+        "end_chunk": 439,
         "end_frame": 439,
         "bytes": 7733252
       },
       {
         "index": 20,
         "filename": "pack_020.bin",
+        "start_chunk": 440,
         "start_frame": 440,
         "frame_count": 22,
+        "end_chunk": 461,
         "end_frame": 461,
         "bytes": 6484470
       },
       {
         "index": 21,
         "filename": "pack_021.bin",
+        "start_chunk": 462,
         "start_frame": 462,
         "frame_count": 22,
+        "end_chunk": 483,
         "end_frame": 483,
         "bytes": 6044785
       },
       {
         "index": 22,
         "filename": "pack_022.bin",
+        "start_chunk": 484,
         "start_frame": 484,
         "frame_count": 22,
+        "end_chunk": 505,
         "end_frame": 505,
         "bytes": 7289328
       },
       {
         "index": 23,
         "filename": "pack_023.bin",
+        "start_chunk": 506,
         "start_frame": 506,
         "frame_count": 22,
+        "end_chunk": 527,
         "end_frame": 527,
         "bytes": 7238306
       },
       {
         "index": 24,
         "filename": "pack_024.bin",
+        "start_chunk": 528,
         "start_frame": 528,
         "frame_count": 15,
+        "end_chunk": 542,
         "end_frame": 542,
         "bytes": 4266321
       }
