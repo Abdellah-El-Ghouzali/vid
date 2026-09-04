@@ -477,12 +477,13 @@ def process_profile(
         pack_files.append({
             "index": pack_index,
             "filename": filename,
+            "start_chunk": start_frame,
             "start_frame": start_frame,
             "frame_count": len(frames),
+            "end_chunk": end_frame - 1,
             "end_frame": end_frame - 1,
             "bytes": size
         })
-
         print(
             "Size:",
             f"{size / 1024 / 1024:.2f} MB"
