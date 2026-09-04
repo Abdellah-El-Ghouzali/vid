@@ -36,18 +36,18 @@ jobs:
         run: |
           python -c "import cv2, numpy, zstandard; print('OpenCV:', cv2.__version__); print('NumPy:', numpy.__version__); print('Zstandard:', zstandard.__version__)"
 
-      - name: Check input
+      - name: Verify video
         run: |
           test -f video.mp4
           ls -lh video.mp4
 
-      - name: Process Video
+      - name: Process video
         run: |
           python process.py
 
-      - name: Check output
+      - name: Verify output
         run: |
-          echo "Generated files:"
+          test -f chunks/180p/manifest.json
           find chunks -type f | sort
           echo ""
           echo "Output size:"
@@ -61,8 +61,8 @@ jobs:
           git add chunks/
 
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No generated changes."
           else
-            git commit -m "Generate video chunks"
+            git commit -m "Regenerate video chunks"
             git push
           fi
