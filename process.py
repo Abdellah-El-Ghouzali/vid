@@ -1,122 +1,123 @@
+```python
 import cv2
 import json
+import math
+import os
 import shutil
-from pathlib import Path
+import struct
 
 import numpy as np
 import zstandard as zstd
 
-# =========================================================
+
+# ============================================================
 # CONFIG
-# =========================================================
+# ============================================================
 
-INPUT_VIDEO = "video.mp4"
-OUTPUT_DIR = Path("chunks")
-
-# Video FPS
 FPS = 15
 
-# أقصى مدة
 MAX_SECONDS = 45
 
-# Shorts 9:16
 PROFILES = {
-    "576p": (576, 1024),
+    "576p": (576, 1024)
 }
 
-# عدد الإطارات داخل كل chunk
-FRAMES_PER_CHUNK = 2
+# Number of large pack files.
+# 5 = maximum 5 HTTP downloads for the video.
+PACK_COUNT = 5
 
-# Zstandard compression
+# Zstandard compression level.
 ZSTD_LEVEL = 3
 
+OUTPUT_DIR = "chunks"
 
-# =========================================================
-# CROP TO 9:16
-# =========================================================
 
-def crop_to_portrait(frame):
-    """
-    قص الإطار إلى نسبة 9:16 من المنتصف.
-    """
+# ============================================================
+# HELPERS
+# ============================================================
 
+def crop_to_portrait(
+    frame,
+    target_width,
+    target_height
+):
     source_height, source_width = frame.shape[:2]
 
-    target_ratio = 9 / 16
-    source_ratio = source_width / source_height
+    target_ratio = (
+        target_width /
+        target_height
+    )
 
-    # الفيديو أعرض من 9:16
+    source_ratio = (
+        source_width /
+        source_height
+    )
+
     if source_ratio > target_ratio:
 
         new_width = int(
-            source_height * target_ratio
+            source_height *
+            target_ratio
         )
 
-        left = (
-            source_width - new_width
-        ) // 2
+        left = max(
+            (source_width - new_width) // 2,
+            0
+        )
 
         frame = frame[
             :,
             left:left + new_width
         ]
 
-    # الفيديو أطول من 9:16
-    elif source_ratio < target_ratio:
+    else:
 
         new_height = int(
-            source_width / target_ratio
+            source_width /
+            target_ratio
         )
 
-        top = (
-            source_height - new_height
-        ) // 2
+        top = max(
+            (source_height - new_height) // 2,
+            0
+        )
 
         frame = frame[
             top:top + new_height,
             :
         ]
 
-    return frame
-
-
-# =========================================================
-# FRAME -> RGB565
-# =========================================================
-
-def frame_to_rgb565(
-    frame_bgr,
-    width,
-    height
-):
-    """
-    Crop + resize + BGR888 -> RGB565 LE
-    """
-
-    frame_bgr = crop_to_portrait(
-        frame_bgr
-    )
-
-    resized = cv2.resize(
-        frame_bgr,
-        (width, height),
+    frame = cv2.resize(
+        frame,
+        (
+            target_width,
+            target_height
+        ),
         interpolation=cv2.INTER_AREA
     )
 
-    # BGR
-    b = resized[:, :, 0].astype(
+    return frame
+
+
+def frame_to_rgb565(frame):
+
+    rgb = cv2.cvtColor(
+        frame,
+        cv2.COLOR_BGR2RGB
+    )
+
+    r = rgb[:, :, 0].astype(
         np.uint16
     )
 
-    g = resized[:, :, 1].astype(
+    g = rgb[:, :, 1].astype(
         np.uint16
     )
 
-    r = resized[:, :, 2].astype(
+    b = rgb[:, :, 2].astype(
         np.uint16
     )
 
-    # 8-bit -> RGB565
     r5 = (
         r * 31 + 127
     ) // 255
@@ -129,122 +130,92 @@ def frame_to_rgb565(
         b * 31 + 127
     ) // 255
 
-    rgb565 = (
-        (r5 << 11)
-        |
-        (g6 << 5)
-        |
+    packed = (
+        (r5 << 11) |
+        (g6 << 5) |
         b5
-    )
+    ).astype("<u2")
 
-    return rgb565.astype(
-        "<u2",
-        copy=False
-    ).tobytes()
+    return packed.tobytes()
 
 
-# =========================================================
-# WRITE CHUNK
-# =========================================================
-
-def write_chunk(
-    path,
-    frames,
-    compressor
+def write_u32(
+    file,
+    value
 ):
-    """
-    Combine frames and compress using Zstandard.
-    """
-
-    raw = b"".join(frames)
-
-    compressed = compressor.compress(
-        raw
-    )
-
-    path.write_bytes(
-        compressed
-    )
-
-    return (
-        len(raw),
-        len(compressed)
-    )
-
-
-# =========================================================
-# MAIN
-# =========================================================
-
-def main():
-
-    print("=" * 60)
-    print("ROBLOX PORTRAIT VIDEO ENCODER")
-    print("=" * 60)
-
-    # =====================================================
-    # INPUT
-    # =====================================================
-
-    input_path = Path(
-        INPUT_VIDEO
-    )
-
-    if not input_path.exists():
-
-        raise FileNotFoundError(
-            f"Video not found: {INPUT_VIDEO}"
+    file.write(
+        struct.pack(
+            "<I",
+            value
         )
+    )
 
-    # =====================================================
-    # CLEAN OUTPUT
-    # =====================================================
 
-    if OUTPUT_DIR.exists():
+def clean_output():
 
-        print(
-            "Removing old chunks..."
-        )
-
+    if os.path.exists(
+        OUTPUT_DIR
+    ):
         shutil.rmtree(
             OUTPUT_DIR
         )
 
-    OUTPUT_DIR.mkdir(
-        parents=True,
+    os.makedirs(
+        OUTPUT_DIR,
         exist_ok=True
     )
 
-    # =====================================================
-    # CREATE DIRECTORIES
-    # =====================================================
 
-    for profile in PROFILES:
+# ============================================================
+# PROCESS PROFILE
+# ============================================================
 
-        (
-            OUTPUT_DIR / profile
-        ).mkdir(
-            parents=True,
-            exist_ok=True
-        )
+def process_profile(
+    video_path,
+    profile_name,
+    width,
+    height
+):
 
-    # =====================================================
+    profile_dir = os.path.join(
+        OUTPUT_DIR,
+        profile_name
+    )
+
+    os.makedirs(
+        profile_dir,
+        exist_ok=True
+    )
+
+    print()
+    print("=" * 60)
+    print(
+        f"Processing: {profile_name}"
+    )
+    print(
+        f"Resolution: {width}x{height}"
+    )
+    print(
+        f"FPS: {FPS}"
+    )
+    print(
+        f"Packs: {PACK_COUNT}"
+    )
+    print("=" * 60)
+
+    # --------------------------------------------------------
     # OPEN VIDEO
-    # =====================================================
+    # --------------------------------------------------------
 
     cap = cv2.VideoCapture(
-        str(input_path)
+        video_path
     )
 
     if not cap.isOpened():
 
         raise RuntimeError(
-            "Could not open video"
+            "Could not open video.mp4"
         )
-
-    # =====================================================
-    # SOURCE INFO
-    # =====================================================
 
     source_fps = cap.get(
         cv2.CAP_PROP_FPS
@@ -255,7 +226,7 @@ def main():
         or source_fps <= 0
     ):
 
-        source_fps = FPS
+        source_fps = 30.0
 
     source_frame_count = int(
         cap.get(
@@ -264,375 +235,484 @@ def main():
     )
 
     source_duration = (
-        source_frame_count
-        / source_fps
+        source_frame_count /
+        source_fps
+        if source_frame_count > 0
+        else 0
     )
 
-    # عدد الإطارات المطلوب
-    max_frames = min(
+    duration = min(
+        source_duration,
+        MAX_SECONDS
+    )
+
+    total_frames = max(
+        1,
         int(
-            source_duration * FPS
-        ),
-        FPS * MAX_SECONDS
+            math.floor(
+                duration * FPS
+            )
+        )
     )
 
     print(
-        f"Source FPS : {source_fps:.2f}"
+        f"Source FPS: {source_fps:.3f}"
     )
 
     print(
-        f"Output FPS : {FPS}"
-    )
-
-    print(
-        f"Source frames : {source_frame_count}"
-    )
-
-    print(
-        f"Source duration : "
+        f"Source duration: "
         f"{source_duration:.2f}s"
     )
 
     print(
-        f"Output frames : {max_frames}"
+        f"Output duration: "
+        f"{duration:.2f}s"
     )
 
     print(
-        f"Max duration : "
-        f"{MAX_SECONDS}s"
+        f"Total frames: "
+        f"{total_frames}"
     )
 
-    print()
+    # --------------------------------------------------------
+    # COMPRESS FRAMES
+    # --------------------------------------------------------
 
-    # =====================================================
-    # COMPRESSORS
-    # =====================================================
+    compressor = zstd.ZstdCompressor(
+        level=ZSTD_LEVEL
+    )
 
-    compressors = {}
+    compressed_frames = []
 
-    for profile in PROFILES:
+    sample_step = (
+        source_fps /
+        FPS
+    )
 
-        compressors[profile] = (
-            zstd.ZstdCompressor(
-                level=ZSTD_LEVEL
-            )
-        )
-
-    # =====================================================
-    # BUFFERS
-    # =====================================================
-
-    buffers = {}
-
-    for profile in PROFILES:
-
-        buffers[profile] = []
-
-    # =====================================================
-    # COUNTERS
-    # =====================================================
-
-    chunk_indices = {}
-
-    raw_totals = {}
-
-    compressed_totals = {}
-
-    for profile in PROFILES:
-
-        chunk_indices[profile] = 0
-        raw_totals[profile] = 0
-        compressed_totals[profile] = 0
-
-    # =====================================================
-    # SAMPLING
-    # =====================================================
+    next_sample_source_frame = 0.0
 
     source_index = 0
     output_index = 0
 
-    sample_step = (
-        source_fps / FPS
-    )
-
-    next_sample = 0.0
-
-    # =====================================================
-    # PROCESS
-    # =====================================================
-
-    while output_index < max_frames:
+    while (
+        output_index <
+        total_frames
+    ):
 
         ok, frame = cap.read()
 
         if not ok:
             break
 
-        current_source = source_index
+        current_source_index = (
+            source_index
+        )
 
         source_index += 1
 
-        # -------------------------------------------------
-        # Skip frames that are not sampled
-        # -------------------------------------------------
-
         if (
-            current_source + 0.0001
-            < next_sample
+            current_source_index
+            + 1e-9
+            <
+            next_sample_source_frame
         ):
             continue
 
-        next_sample += sample_step
+        frame = crop_to_portrait(
+            frame,
+            width,
+            height
+        )
 
-        # -------------------------------------------------
-        # Encode all profiles
-        # -------------------------------------------------
+        raw_rgb565 = frame_to_rgb565(
+            frame
+        )
 
-        for profile, size in PROFILES.items():
-
-            width, height = size
-
-            encoded = frame_to_rgb565(
-                frame,
-                width,
-                height
+        compressed = (
+            compressor.compress(
+                raw_rgb565
             )
+        )
 
-            buffers[profile].append(
-                encoded
-            )
-
-            # -------------------------------------------------
-            # Write complete chunk
-            # -------------------------------------------------
-
-            if (
-                len(buffers[profile])
-                >= FRAMES_PER_CHUNK
-            ):
-
-                chunk_id = (
-                    chunk_indices[profile]
-                )
-
-                output_path = (
-                    OUTPUT_DIR
-                    / profile
-                    / f"chunk_{chunk_id:04d}.bin"
-                )
-
-                (
-                    raw_size,
-                    compressed_size
-                ) = write_chunk(
-                    output_path,
-                    buffers[profile],
-                    compressors[profile]
-                )
-
-                raw_totals[profile] += (
-                    raw_size
-                )
-
-                compressed_totals[profile] += (
-                    compressed_size
-                )
-
-                buffers[profile].clear()
-
-                chunk_indices[profile] += 1
+        compressed_frames.append(
+            compressed
+        )
 
         output_index += 1
 
-        # -------------------------------------------------
-        # Progress
-        # -------------------------------------------------
+        next_sample_source_frame += (
+            sample_step
+        )
 
-        if output_index % 20 == 0:
+        if (
+            output_index % 30 == 0
+            or output_index == total_frames
+        ):
 
             percent = (
-                output_index
-                / max_frames
-                * 100
+                output_index /
+                total_frames *
+                100
             )
 
             print(
                 f"Frames: "
                 f"{output_index}/"
-                f"{max_frames} "
+                f"{total_frames} "
                 f"({percent:.1f}%)"
             )
 
-    # =====================================================
-    # RELEASE
-    # =====================================================
-
     cap.release()
 
-    # =====================================================
-    # WRITE FINAL CHUNKS
-    # =====================================================
+    if not compressed_frames:
 
-    for profile in PROFILES:
-
-        if not buffers[profile]:
-            continue
-
-        chunk_id = (
-            chunk_indices[profile]
+        raise RuntimeError(
+            "No frames were generated."
         )
 
-        output_path = (
-            OUTPUT_DIR
-            / profile
-            / f"chunk_{chunk_id:04d}.bin"
+    total_frames = len(
+        compressed_frames
+    )
+
+    # --------------------------------------------------------
+    # PACK DISTRIBUTION
+    # --------------------------------------------------------
+
+    actual_pack_count = min(
+        PACK_COUNT,
+        total_frames
+    )
+
+    chunks_per_pack = math.ceil(
+        total_frames /
+        actual_pack_count
+    )
+
+    print()
+    print(
+        f"Actual pack count: "
+        f"{actual_pack_count}"
+    )
+
+    print(
+        f"Frames per pack: "
+        f"{chunks_per_pack}"
+    )
+
+    # --------------------------------------------------------
+    # WRITE PACKS
+    #
+    # PACK FORMAT:
+    #
+    # uint32 frame_count
+    #
+    # repeated:
+    #   uint32 compressed_size
+    #   compressed_frame
+    #
+    # --------------------------------------------------------
+
+    pack_files = []
+
+    for pack_index in range(
+        actual_pack_count
+    ):
+
+        start_frame = (
+            pack_index *
+            chunks_per_pack
         )
 
-        (
-            raw_size,
-            compressed_size
-        ) = write_chunk(
-            output_path,
-            buffers[profile],
-            compressors[profile]
+        end_frame = min(
+            start_frame +
+            chunks_per_pack,
+            total_frames
         )
 
-        raw_totals[profile] += (
-            raw_size
+        frames = compressed_frames[
+            start_frame:end_frame
+        ]
+
+        filename = (
+            f"pack_{pack_index:03d}.bin"
         )
 
-        compressed_totals[profile] += (
-            compressed_size
+        path = os.path.join(
+            profile_dir,
+            filename
         )
 
-        chunk_indices[profile] += 1
-
-        buffers[profile].clear()
-
-    # =====================================================
-    # PROFILE MANIFEST
-    # =====================================================
-
-    for profile, size in PROFILES.items():
-
-        width, height = size
-
-        manifest = {
-            "profile": profile,
-            "width": width,
-            "height": height,
-            "aspect_ratio": "9:16",
-            "fps": FPS,
-            "total_frames": output_index,
-            "frames_per_chunk": FRAMES_PER_CHUNK,
-            "chunks": chunk_indices[profile],
-            "format": "RGB565_LE",
-            "bytes_per_pixel": 2,
-            "compression": "zstd",
-            "compression_level": ZSTD_LEVEL,
-            "raw_bytes": raw_totals[profile],
-            "compressed_bytes": compressed_totals[profile],
-            "duration": output_index / FPS,
-        }
-
-        manifest_path = (
-            OUTPUT_DIR
-            / profile
-            / "manifest.json"
+        print()
+        print(
+            f"Writing {filename}"
         )
 
         with open(
-            manifest_path,
-            "w",
-            encoding="utf-8"
-        ) as f:
+            path,
+            "wb"
+        ) as file:
 
-            json.dump(
-                manifest,
-                f,
-                indent=2
+            # Number of frames
+            write_u32(
+                file,
+                len(frames)
             )
 
-    # =====================================================
-    # MASTER MANIFEST
-    # =====================================================
+            for frame_data in frames:
 
-    master = {
-        "fps": FPS,
-        "duration": min(
-            MAX_SECONDS,
-            output_index / FPS
-        ),
-        "total_frames": output_index,
+                # Compressed frame size
+                write_u32(
+                    file,
+                    len(frame_data)
+                )
+
+                # Frame bytes
+                file.write(
+                    frame_data
+                )
+
+        size = os.path.getsize(
+            path
+        )
+
+        pack_files.append({
+            "index": pack_index,
+            "filename": filename,
+            "start_frame": start_frame,
+            "frame_count": len(frames),
+            "end_frame": end_frame - 1,
+            "bytes": size
+        })
+
+        print(
+            "Size:",
+            f"{size / 1024 / 1024:.2f} MB"
+        )
+
+    # --------------------------------------------------------
+    # MANIFEST
+    # --------------------------------------------------------
+
+    compressed_bytes = sum(
+        len(frame)
+        for frame in compressed_frames
+    )
+
+    raw_bytes_per_frame = (
+        width *
+        height *
+        2
+    )
+
+    raw_bytes = (
+        raw_bytes_per_frame *
+        total_frames
+    )
+
+    manifest = {
+        "profile": profile_name,
+        "width": width,
+        "height": height,
         "aspect_ratio": "9:16",
-        "profiles": {}
+        "fps": FPS,
+        "total_frames": total_frames,
+
+        # One compressed frame per entry.
+        "frames_per_chunk": 1,
+
+        # Kept for compatibility.
+        "chunks": total_frames,
+
+        # New packed format.
+        "packs": actual_pack_count,
+        "frames_per_pack": chunks_per_pack,
+
+        "format": "RGB565_LE",
+        "bytes_per_pixel": 2,
+        "compression": "zstd",
+        "compression_level": ZSTD_LEVEL,
+
+        "raw_bytes": raw_bytes,
+        "compressed_bytes": compressed_bytes,
+
+        "duration": (
+            total_frames /
+            FPS
+        ),
+
+        "pack_files": pack_files
     }
 
-    for profile, size in PROFILES.items():
-
-        width, height = size
-
-        master["profiles"][profile] = {
-            "width": width,
-            "height": height,
-        }
+    manifest_path = os.path.join(
+        profile_dir,
+        "manifest.json"
+    )
 
     with open(
-        OUTPUT_DIR / "manifest.json",
+        manifest_path,
         "w",
         encoding="utf-8"
-    ) as f:
+    ) as file:
 
         json.dump(
-            master,
-            f,
+            manifest,
+            file,
             indent=2
         )
 
-    # =====================================================
+    # --------------------------------------------------------
     # SUMMARY
-    # =====================================================
+    # --------------------------------------------------------
+
+    total_pack_size = sum(
+        pack["bytes"]
+        for pack in pack_files
+    )
 
     print()
     print("=" * 60)
-    print("COMPLETE")
+    print(
+        f"{profile_name} COMPLETE"
+    )
     print("=" * 60)
 
     print(
-        f"Output frames: {output_index}"
+        "Resolution:",
+        f"{width}x{height}"
     )
 
     print(
-        f"Output FPS: {FPS}"
+        "FPS:",
+        FPS
     )
 
     print(
-        f"Duration: "
-        f"{output_index / FPS:.2f}s"
+        "Frames:",
+        total_frames
     )
 
-    for profile, size in PROFILES.items():
+    print(
+        "Packs:",
+        actual_pack_count
+    )
 
-        width, height = size
+    print(
+        "Duration:",
+        f'{manifest["duration"]:.2f}s'
+    )
 
-        compressed_mb = (
-            compressed_totals[profile]
-            / 1024
-            / 1024
+    print(
+        "Total packed size:",
+        f"{total_pack_size / 1024 / 1024:.2f} MB"
+    )
+
+    print(
+        "Manifest:",
+        manifest_path
+    )
+
+    return manifest
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
+def main():
+
+    video_path = "video.mp4"
+
+    if not os.path.isfile(
+        video_path
+    ):
+
+        raise FileNotFoundError(
+            "video.mp4 was not found."
+        )
+
+    clean_output()
+
+    all_manifests = {}
+
+    for profile_name, (
+        width,
+        height
+    ) in PROFILES.items():
+
+        manifest = process_profile(
+            video_path,
+            profile_name,
+            width,
+            height
+        )
+
+        all_manifests[
+            profile_name
+        ] = manifest
+
+    # --------------------------------------------------------
+    # MASTER MANIFEST
+    # --------------------------------------------------------
+
+    master_manifest_path = os.path.join(
+        OUTPUT_DIR,
+        "manifest.json"
+    )
+
+    with open(
+        master_manifest_path,
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        json.dump(
+            all_manifests,
+            file,
+            indent=2
+        )
+
+    print()
+    print("=" * 60)
+    print("ALL PROCESSING COMPLETE")
+    print("=" * 60)
+
+    for profile_name, manifest in (
+        all_manifests.items()
+    ):
+
+        print()
+        print(
+            f"Profile: {profile_name}"
         )
 
         print(
-            f"{profile} | "
-            f"{width}x{height} | "
-            f"{FPS} FPS | "
-            f"{chunk_indices[profile]} chunks | "
-            f"{compressed_mb:.2f} MB"
+            "Resolution:",
+            manifest["width"],
+            "x",
+            manifest["height"]
         )
 
-    print(
-        "Video processing finished."
-    )
+        print(
+            "FPS:",
+            manifest["fps"]
+        )
+
+        print(
+            "Frames:",
+            manifest["total_frames"]
+        )
+
+        print(
+            "Packs:",
+            manifest["packs"]
+        )
+
+        print(
+            "Duration:",
+            f'{manifest["duration"]:.2f}s'
+        )
 
 
 if __name__ == "__main__":
     main()
+```
