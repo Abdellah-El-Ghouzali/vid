@@ -29,7 +29,12 @@ jobs:
 
       - name: Install dependencies
         run: |
-          python -m pip install --disable-pip-version-check --no-input --timeout 60 --retries 3 -r requirements.txt
+          python -m pip install \
+            --disable-pip-version-check \
+            --no-input \
+            --timeout 60 \
+            --retries 3 \
+            -r requirements.txt
 
       - name: Verify dependencies
         run: |
@@ -59,12 +64,21 @@ jobs:
       - name: Verify output
         run: |
           test -f chunks/576p/manifest.json
-          find chunks -type f | sort
+          test -f chunks/576p/pack_000.bin
+          test -f chunks/576p/pack_001.bin
+          test -f chunks/576p/pack_002.bin
+          test -f chunks/576p/pack_003.bin
+          test -f chunks/576p/pack_004.bin
+
+          echo ""
+          echo "Generated files:"
+          find chunks/576p -maxdepth 1 -type f | sort
+
           echo ""
           echo "Output size:"
           du -sh chunks
 
-      - name: Commit generated chunks
+      - name: Commit generated packs
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -74,6 +88,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No generated changes."
           else
-            git commit -m "Regenerate video chunks"
+            git commit -m "Regenerate packed video"
             git push
           fi
