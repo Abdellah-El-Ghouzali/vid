@@ -23,7 +23,7 @@ PROFILES = {
 
 # Number of large pack files.
 # 5 = maximum 5 HTTP downloads for the video.
-PACK_COUNT = 5
+PACK_COUNT = 25
 
 # Zstandard compression level.
 ZSTD_LEVEL = 3
