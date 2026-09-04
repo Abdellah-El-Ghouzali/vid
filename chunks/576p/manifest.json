@@ -5,13 +5,57 @@
   "aspect_ratio": "9:16",
   "fps": 15,
   "total_frames": 543,
-  "frames_per_chunk": 2,
-  "chunks": 272,
+  "frames_per_chunk": 1,
+  "chunks": 543,
+  "packs": 5,
+  "frames_per_pack": 109,
   "format": "RGB565_LE",
   "bytes_per_pixel": 2,
   "compression": "zstd",
   "compression_level": 3,
   "raw_bytes": 640548864,
-  "compressed_bytes": 129596085,
-  "duration": 36.2
+  "compressed_bytes": 164581886,
+  "duration": 36.2,
+  "pack_files": [
+    {
+      "index": 0,
+      "filename": "pack_000.bin",
+      "start_frame": 0,
+      "frame_count": 109,
+      "end_frame": 108,
+      "bytes": 36745490
+    },
+    {
+      "index": 1,
+      "filename": "pack_001.bin",
+      "start_frame": 109,
+      "frame_count": 109,
+      "end_frame": 217,
+      "bytes": 30996192
+    },
+    {
+      "index": 2,
+      "filename": "pack_002.bin",
+      "start_frame": 218,
+      "frame_count": 109,
+      "end_frame": 326,
+      "bytes": 33438590
+    },
+    {
+      "index": 3,
+      "filename": "pack_003.bin",
+      "start_frame": 327,
+      "frame_count": 109,
+      "end_frame": 435,
+      "bytes": 30764525
+    },
+    {
+      "index": 4,
+      "filename": "pack_004.bin",
+      "start_frame": 436,
+      "frame_count": 107,
+      "end_frame": 542,
+      "bytes": 32639281
+    }
+  ]
 }
