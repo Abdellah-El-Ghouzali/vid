@@ -11,43 +11,62 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-video-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-video:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4  # Fixed from v6
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-      - name: Setup Python
+      - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
+          cache-dependency-path: "requirements.txt"
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          # Headless OpenCV installs 3x faster
-          python -m pip install opencv-python-headless numpy zstandard
+          python -m pip install \
+            --disable-pip-version-check \
+            --prefer-binary \
+            opencv-python-headless numpy zstandard
+
+      - name: Verify video input
+        run: |
+          test -f video.mp4
+          ls -lh video.mp4
 
       - name: Process video
         run: |
           python process.py
 
-      - name: Verify output
+      - name: Verify generated output
         run: |
-          test -f chunks/576p/manifest.json
-          du -sh chunks
+          # Checks master manifest or any profile manifest dynamically (288p, 360p, 576p)
+          test -f chunks/manifest.json || test -n "$(find chunks -name 'manifest.json' -print -quit)"
+          echo "Generated chunks:"
+          du -sh chunks/*
 
-      - name: Commit generated video
+      - name: Commit and push generated video
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add chunks/
+
+          # -A stages new, modified, and deleted segments cleanly
+          git add -A chunks/
+
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No changes detected in chunks."
           else
-            git commit -m "Fast streaming video build [skip ci]"
+            git commit -m "Generate streaming video chunks [skip ci]"
+            git pull --rebase origin ${{ github.ref_name }} || true
             git push
           fi
