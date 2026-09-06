@@ -14,48 +14,46 @@ import zstandard as zstd
 # ============================================================
 
 FPS = 15
-
 MAX_SECONDS = 45
 
 PROFILES = {
     "576p": (576, 1024)
 }
 
-# ------------------------------------------------------------
-# Streaming configuration
-# ------------------------------------------------------------
+# ============================================================
+# SEGMENTS
+# ============================================================
 
-# First segment is intentionally short so playback can start
-# as quickly as possible.
+# First segment is intentionally short.
 FIRST_SEGMENT_FRAMES = 8
 
-# Normal target segment length.
-# 15 FPS × 15 frames = 1 second.
+# Normal segment length.
 SEGMENT_FRAMES = 15
 
-# Do not allow a single segment to become huge.
-# The encoder will split it earlier if necessary.
+# Safety limit for one segment.
 MAX_SEGMENT_BYTES = 2_000_000
 
-# ------------------------------------------------------------
-# Delta configuration
-# ------------------------------------------------------------
+# ============================================================
+# DELTA ENCODING
+# ============================================================
 
-# 8x8 tiles are used for spatial delta encoding.
 TILE_SIZE = 8
 
-# If a delta frame compresses worse than this percentage
-# of the full-frame compressed size, use a full frame instead.
+# Delta is used only if it is smaller than this ratio
+# of the full-frame compressed size.
 DELTA_MAX_RATIO = 0.90
 
-# Zstandard compression.
+# ============================================================
+# COMPRESSION
+# ============================================================
+
 ZSTD_LEVEL = 3
 
 OUTPUT_DIR = "chunks"
 
 
 # ============================================================
-# HELPERS
+# IMAGE HELPERS
 # ============================================================
 
 def crop_to_portrait(
@@ -120,6 +118,7 @@ def crop_to_portrait(
 
 
 def frame_to_rgb565_array(frame):
+
     rgb = cv2.cvtColor(
         frame,
         cv2.COLOR_BGR2RGB
@@ -153,14 +152,15 @@ def frame_to_rgb565_array(frame):
         (r5 << 11) |
         (g6 << 5) |
         b5
-    ).astype("<u2")
+    ).astype(
+        "<u2"
+    )
 
 
-def rgb565_bytes(array):
-    return array.tobytes()
-
-
-def write_u32(file, value):
+def write_u32(
+    file,
+    value
+):
     file.write(
         struct.pack(
             "<I",
@@ -169,14 +169,9 @@ def write_u32(file, value):
     )
 
 
-def write_u16(file, value):
-    file.write(
-        struct.pack(
-            "<H",
-            int(value)
-        )
-    )
-
+# ============================================================
+# DELTA ENCODER
+# ============================================================
 
 def build_delta_payload(
     previous,
@@ -184,42 +179,45 @@ def build_delta_payload(
     width,
     height
 ):
-    """
-    Delta format:
-
-    uint16 changed_tile_count
-
-    For every tile:
-        uint8 tile_x
-        uint8 tile_y
-        raw RGB565 tile bytes
-
-    Tile dimensions are inferred from the image edges.
-    """
-
     tiles_x = math.ceil(
-        width / TILE_SIZE
+        width /
+        TILE_SIZE
     )
 
     tiles_y = math.ceil(
-        height / TILE_SIZE
+        height /
+        TILE_SIZE
     )
 
     changed_tiles = []
 
-    for tile_y in range(tiles_y):
+    for tile_y in range(
+        tiles_y
+    ):
 
-        y0 = tile_y * TILE_SIZE
+        y0 = (
+            tile_y *
+            TILE_SIZE
+        )
+
         y1 = min(
-            y0 + TILE_SIZE,
+            y0 +
+            TILE_SIZE,
             height
         )
 
-        for tile_x in range(tiles_x):
+        for tile_x in range(
+            tiles_x
+        ):
 
-            x0 = tile_x * TILE_SIZE
+            x0 = (
+                tile_x *
+                TILE_SIZE
+            )
+
             x1 = min(
-                x0 + TILE_SIZE,
+                x0 +
+                TILE_SIZE,
                 width
             )
 
@@ -252,7 +250,9 @@ def build_delta_payload(
     payload.extend(
         struct.pack(
             "<H",
-            len(changed_tiles)
+            len(
+                changed_tiles
+            )
         )
     )
 
@@ -261,6 +261,14 @@ def build_delta_payload(
         tile_y,
         tile
     ) in changed_tiles:
+
+        if (
+            tile_x > 255
+            or tile_y > 255
+        ):
+            raise RuntimeError(
+                "Tile coordinate too large."
+            )
 
         payload.append(
             tile_x
@@ -276,10 +284,17 @@ def build_delta_payload(
             ).tobytes()
         )
 
-    return bytes(payload)
+    return bytes(
+        payload
+    )
 
+
+# ============================================================
+# OUTPUT
+# ============================================================
 
 def clean_output():
+
     if os.path.exists(
         OUTPUT_DIR
     ):
@@ -293,10 +308,6 @@ def clean_output():
     )
 
 
-# ============================================================
-# SEGMENT WRITER
-# ============================================================
-
 def write_segment(
     profile_dir,
     segment_index,
@@ -307,10 +318,11 @@ def write_segment(
 
     uint32 frame_count
 
-    repeated per frame:
+    repeated:
+
         uint8 frame_type
-            0 = full keyframe
-            1 = delta frame
+            0 = full/keyframe
+            1 = delta
 
         uint32 compressed_size
 
@@ -333,22 +345,31 @@ def write_segment(
 
         write_u32(
             file,
-            len(encoded_frames)
+            len(
+                encoded_frames
+            )
         )
 
-        for frame_type, data in encoded_frames:
+        for (
+            frame_type,
+            frame_data
+        ) in encoded_frames:
 
             file.write(
-                bytes([frame_type])
+                bytes([
+                    frame_type
+                ])
             )
 
             write_u32(
                 file,
-                len(data)
+                len(
+                    frame_data
+                )
             )
 
             file.write(
-                data
+                frame_data
             )
 
     size = os.path.getsize(
@@ -358,7 +379,9 @@ def write_segment(
     return {
         "index": segment_index,
         "filename": filename,
-        "frame_count": len(encoded_frames),
+        "frame_count": len(
+            encoded_frames
+        ),
         "bytes": size
     }
 
@@ -373,6 +396,7 @@ def process_profile(
     width,
     height
 ):
+
     profile_dir = os.path.join(
         OUTPUT_DIR,
         profile_name
@@ -385,25 +409,48 @@ def process_profile(
 
     print()
     print("=" * 70)
-    print("PROCESSING:", profile_name)
+    print(
+        "PROCESSING:",
+        profile_name
+    )
+
     print(
         "Resolution:",
         f"{width}x{height}"
     )
-    print("FPS:", FPS)
-    print("First segment:", FIRST_SEGMENT_FRAMES)
-    print("Normal segment:", SEGMENT_FRAMES)
+
+    print(
+        "FPS:",
+        FPS
+    )
+
+    print(
+        "First segment frames:",
+        FIRST_SEGMENT_FRAMES
+    )
+
+    print(
+        "Normal segment frames:",
+        SEGMENT_FRAMES
+    )
+
     print(
         "Max segment bytes:",
         MAX_SEGMENT_BYTES
     )
+
     print("=" * 70)
+
+    # --------------------------------------------------------
+    # OPEN VIDEO
+    # --------------------------------------------------------
 
     cap = cv2.VideoCapture(
         video_path
     )
 
     if not cap.isOpened():
+
         raise RuntimeError(
             "Could not open video.mp4"
         )
@@ -416,6 +463,7 @@ def process_profile(
         not source_fps
         or source_fps <= 0
     ):
+
         source_fps = 30.0
 
     source_frame_count = int(
@@ -440,7 +488,8 @@ def process_profile(
         1,
         int(
             math.floor(
-                duration * FPS
+                duration *
+                FPS
             )
         )
     )
@@ -451,24 +500,31 @@ def process_profile(
     )
 
     print(
-        "Duration:",
+        "Source duration:",
+        f"{source_duration:.2f}s"
+    )
+
+    print(
+        "Output duration:",
         f"{duration:.2f}s"
     )
 
     print(
-        "Expected output frames:",
+        "Expected frames:",
         expected_total_frames
     )
 
-    compressor = zstd.ZstdCompressor(
-        level=ZSTD_LEVEL
+    # --------------------------------------------------------
+    # COMPRESSOR
+    # --------------------------------------------------------
+
+    compressor = (
+        zstd.ZstdCompressor(
+            level=ZSTD_LEVEL
+        )
     )
 
-    # --------------------------------------------------------
-    # Read output frames
-    # --------------------------------------------------------
-
-    output_frames = []
+    frames = []
 
     sample_step = (
         source_fps /
@@ -476,12 +532,15 @@ def process_profile(
     )
 
     next_sample_source_frame = 0.0
-
     source_index = 0
 
+    # --------------------------------------------------------
+    # READ & CONVERT FRAMES
+    # --------------------------------------------------------
+
     while (
-        len(output_frames)
-        < expected_total_frames
+        len(frames) <
+        expected_total_frames
     ):
 
         ok, frame = cap.read()
@@ -496,8 +555,10 @@ def process_profile(
         source_index += 1
 
         if (
-            current_source_index + 1e-9
-            < next_sample_source_frame
+            current_source_index +
+            1e-9
+            <
+            next_sample_source_frame
         ):
             continue
 
@@ -507,11 +568,13 @@ def process_profile(
             height
         )
 
-        rgb565 = frame_to_rgb565_array(
-            frame
+        rgb565 = (
+            frame_to_rgb565_array(
+                frame
+            )
         )
 
-        output_frames.append(
+        frames.append(
             rgb565
         )
 
@@ -520,101 +583,103 @@ def process_profile(
         )
 
         if (
-            len(output_frames) % 30 == 0
-            or len(output_frames)
-            == expected_total_frames
+            len(frames) % 30 == 0
+            or
+            len(frames) ==
+                expected_total_frames
         ):
 
             print(
                 f"Frames: "
-                f"{len(output_frames)}/"
+                f"{len(frames)}/"
                 f"{expected_total_frames}"
             )
 
     cap.release()
 
-    if not output_frames:
+    if not frames:
+
         raise RuntimeError(
-            "No output frames generated."
+            "No frames generated."
         )
 
     total_frames = len(
-        output_frames
+        frames
     )
 
     # --------------------------------------------------------
-    # Encode into segments
+    # CREATE SEGMENTS
     # --------------------------------------------------------
 
     segments = []
 
-    segment_frames = []
-
-    segment_start_frame = 0
-
-    segment_target_frames = (
-        FIRST_SEGMENT_FRAMES
-        if len(segments) == 0
-        else SEGMENT_FRAMES
-    )
-
+    frame_index = 0
     segment_index = 0
 
-    global_frame_index = 0
+    while frame_index < total_frames:
 
-    while global_frame_index < total_frames:
+        if segment_index == 0:
+            target_frames = (
+                FIRST_SEGMENT_FRAMES
+            )
+        else:
+            target_frames = (
+                SEGMENT_FRAMES
+            )
 
-        # Start every segment with a full keyframe.
-        keyframe = output_frames[
-            global_frame_index
+        segment_start =
+            frame_index
+
+        # ----------------------------------------------------
+        # KEYFRAME
+        # ----------------------------------------------------
+
+        keyframe = frames[
+            frame_index
         ]
-
-        full_raw = rgb565_bytes(
-            keyframe
-        )
 
         full_compressed = (
             compressor.compress(
-                full_raw
+                keyframe.tobytes()
             )
         )
 
-        segment_frames = [
+        encoded_frames = [
             (
                 0,
                 full_compressed
             )
         ]
 
-        segment_bytes = (
+        segment_size = (
             1 +
             4 +
             len(full_compressed)
         )
 
-        previous_frame = keyframe
+        previous_frame = (
+            keyframe
+        )
 
-        global_frame_index += 1
+        frame_index += 1
 
-        frame_count = 1
+        frames_in_segment = 1
 
         # ----------------------------------------------------
-        # Add delta/full frames
+        # DELTAS / FULL FRAMES
         # ----------------------------------------------------
 
         while (
-            global_frame_index
-            < total_frames
-
-            and frame_count
-            < segment_target_frames
+            frame_index <
+                total_frames
+            and
+            frames_in_segment <
+                target_frames
         ):
 
-            current_frame = (
-                output_frames[
-                    global_frame_index
-                ]
-            )
+            current_frame = frames[
+                frame_index
+            ]
 
             delta_payload = (
                 build_delta_payload(
@@ -633,13 +698,10 @@ def process_profile(
 
             current_full_compressed = (
                 compressor.compress(
-                    rgb565_bytes(
-                        current_frame
-                    )
+                    current_frame.tobytes()
                 )
             )
 
-            # Use delta only when it is meaningfully smaller.
             if (
                 len(delta_compressed)
                 <=
@@ -648,6 +710,7 @@ def process_profile(
             ):
 
                 frame_type = 1
+
                 frame_data = (
                     delta_compressed
                 )
@@ -655,12 +718,13 @@ def process_profile(
             else:
 
                 frame_type = 0
+
                 frame_data = (
                     current_full_compressed
                 )
 
             projected_size = (
-                segment_bytes
+                segment_size
                 + 1
                 + 4
                 + len(frame_data)
@@ -672,14 +736,14 @@ def process_profile(
             ):
                 break
 
-            segment_frames.append(
+            encoded_frames.append(
                 (
                     frame_type,
                     frame_data
                 )
             )
 
-            segment_bytes = (
+            segment_size = (
                 projected_size
             )
 
@@ -687,82 +751,72 @@ def process_profile(
                 current_frame
             )
 
-            global_frame_index += 1
-            frame_count += 1
+            frame_index += 1
 
-        segment_info = write_segment(
-            profile_dir,
-            segment_index,
-            segment_frames
+            frames_in_segment += 1
+
+        segment_info = (
+            write_segment(
+                profile_dir,
+                segment_index,
+                encoded_frames
+            )
         )
 
         segment_info[
             "start_frame"
-        ] = segment_start_frame
+        ] = segment_start
 
         segment_info[
             "end_frame"
-        ] = (
-            segment_start_frame
-            +
-            frame_count
-            - 1
-        )
+        ] = frame_index - 1
 
         segment_info[
             "duration"
         ] = (
-            frame_count /
+            frames_in_segment /
             FPS
-        )
-
-        full_count = sum(
-            1
-            for frame_type, _
-            in segment_frames
-            if frame_type == 0
-        )
-
-        delta_count = sum(
-            1
-            for frame_type, _
-            in segment_frames
-            if frame_type == 1
         )
 
         segment_info[
             "keyframes"
-        ] = full_count
+        ] = sum(
+            1
+            for (
+                frame_type,
+                _
+            ) in encoded_frames
+            if frame_type == 0
+        )
 
         segment_info[
             "delta_frames"
-        ] = delta_count
+        ] = sum(
+            1
+            for (
+                frame_type,
+                _
+            ) in encoded_frames
+            if frame_type == 1
+        )
 
         segments.append(
             segment_info
         )
 
         print(
-            f"Segment {segment_index:04d}: "
-            f"{frame_count} frames, "
+            f"Segment "
+            f"{segment_index:04d}: "
+            f"{frames_in_segment} frames, "
             f"{segment_info['bytes'] / 1024 / 1024:.2f} MB, "
-            f"{full_count} full, "
-            f"{delta_count} delta"
+            f"full={segment_info['keyframes']}, "
+            f"delta={segment_info['delta_frames']}"
         )
 
         segment_index += 1
 
-        segment_start_frame += (
-            frame_count
-        )
-
-        # After the first segment, normal target size.
-        segment_target_frames = (
-            SEGMENT_FRAMES
-        )
-
     # --------------------------------------------------------
-    # Manifest
+    # MANIFEST
     # --------------------------------------------------------
 
     raw_bytes_per_frame = (
@@ -782,33 +836,49 @@ def process_profile(
     )
 
     manifest = {
-        "version": 2,
-        "profile": profile_name,
+        "version": 3,
 
-        "width": width,
-        "height": height,
+        "profile":
+            profile_name,
 
-        "aspect_ratio": "9:16",
+        "width":
+            width,
 
-        "fps": FPS,
-        "total_frames": total_frames,
+        "height":
+            height,
 
-        "duration": (
-            total_frames /
-            FPS
-        ),
+        "aspect_ratio":
+            "9:16",
 
-        "format": "RGB565_LE",
-        "bytes_per_pixel": 2,
+        "fps":
+            FPS,
 
-        "compression": "zstd",
-        "compression_level": ZSTD_LEVEL,
+        "total_frames":
+            total_frames,
 
-        "tile_size": TILE_SIZE,
+        "duration":
+            total_frames / FPS,
 
-        "segment_count": len(
-            segments
-        ),
+        "format":
+            "RGB565_LE",
+
+        "bytes_per_pixel":
+            2,
+
+        "compression":
+            "zstd",
+
+        "compression_level":
+            ZSTD_LEVEL,
+
+        "tile_size":
+            TILE_SIZE,
+
+        "delta_max_ratio":
+            DELTA_MAX_RATIO,
+
+        "segment_count":
+            len(segments),
 
         "first_segment_frames":
             FIRST_SEGMENT_FRAMES,
@@ -819,12 +889,14 @@ def process_profile(
         "max_segment_bytes":
             MAX_SEGMENT_BYTES,
 
-        "raw_bytes": raw_bytes,
+        "raw_bytes":
+            raw_bytes,
 
         "segment_bytes":
             total_segment_bytes,
 
-        "segments": segments
+        "segments":
+            segments
     }
 
     manifest_path = os.path.join(
@@ -870,7 +942,7 @@ def process_profile(
     )
 
     print(
-        "Segment size:",
+        "Encoded size:",
         f"{total_segment_bytes / 1024 / 1024:.2f} MB"
     )
 
@@ -915,13 +987,13 @@ def main():
             height
         )
 
-    master_manifest_path = os.path.join(
+    master_path = os.path.join(
         OUTPUT_DIR,
         "manifest.json"
     )
 
     with open(
-        master_manifest_path,
+        master_path,
         "w",
         encoding="utf-8"
     ) as file:
