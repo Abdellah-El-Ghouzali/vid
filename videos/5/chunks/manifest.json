@@ -1,6 +1,6 @@
 {
   "288p": {
-    "version": 4,
+    "version": 5,
     "profile": "288p",
     "width": 288,
     "height": 512,
@@ -11,114 +11,81 @@
     "format": "RGB565_LE",
     "bytes_per_pixel": 2,
     "compression": "zstd",
-    "compression_level": 7,
+    "compression_level": 9,
     "tile_size": 8,
     "delta_max_ratio": 0.85,
-    "segment_count": 9,
-    "first_segment_frames": 8,
-    "target_segment_frames": 15,
+    "segment_count": 6,
+    "first_segment_frames": 5,
+    "target_segment_frames": 30,
     "max_segment_bytes": 1500000,
     "raw_bytes": 35389440,
-    "segment_bytes": 7303367,
+    "segment_bytes": 7068405,
     "segments": [
       {
         "index": 0,
         "filename": "segment_0000.bin",
-        "frame_count": 8,
-        "bytes": 271925,
+        "frame_count": 5,
+        "bytes": 190708,
         "start_frame": 0,
-        "end_frame": 7,
-        "duration": 0.5333333333333333,
+        "end_frame": 4,
+        "duration": 0.3333333333333333,
         "keyframes": 1,
-        "delta_frames": 7
+        "delta_frames": 4
       },
       {
         "index": 1,
         "filename": "segment_0001.bin",
-        "frame_count": 15,
-        "bytes": 520512,
-        "start_frame": 8,
-        "end_frame": 22,
-        "duration": 1.0,
+        "frame_count": 30,
+        "bytes": 1024712,
+        "start_frame": 5,
+        "end_frame": 34,
+        "duration": 2.0,
         "keyframes": 1,
-        "delta_frames": 14
+        "delta_frames": 29
       },
       {
         "index": 2,
         "filename": "segment_0002.bin",
-        "frame_count": 15,
-        "bytes": 668467,
-        "start_frame": 23,
-        "end_frame": 37,
-        "duration": 1.0,
+        "frame_count": 21,
+        "bytes": 1466654,
+        "start_frame": 35,
+        "end_frame": 55,
+        "duration": 1.4,
         "keyframes": 1,
-        "delta_frames": 14
+        "delta_frames": 20
       },
       {
         "index": 3,
         "filename": "segment_0003.bin",
-        "frame_count": 15,
-        "bytes": 1059864,
-        "start_frame": 38,
-        "end_frame": 52,
-        "duration": 1.0,
+        "frame_count": 22,
+        "bytes": 1463420,
+        "start_frame": 56,
+        "end_frame": 77,
+        "duration": 1.4666666666666666,
         "keyframes": 1,
-        "delta_frames": 14
+        "delta_frames": 21
       },
       {
         "index": 4,
         "filename": "segment_0004.bin",
-        "frame_count": 15,
-        "bytes": 1075111,
-        "start_frame": 53,
-        "end_frame": 67,
-        "duration": 1.0,
+        "frame_count": 19,
+        "bytes": 1457244,
+        "start_frame": 78,
+        "end_frame": 96,
+        "duration": 1.2666666666666666,
         "keyframes": 1,
-        "delta_frames": 14
+        "delta_frames": 18
       },
       {
         "index": 5,
         "filename": "segment_0005.bin",
-        "frame_count": 15,
-        "bytes": 1070002,
-        "start_frame": 68,
-        "end_frame": 82,
-        "duration": 1.0,
-        "keyframes": 1,
-        "delta_frames": 14
-      },
-      {
-        "index": 6,
-        "filename": "segment_0006.bin",
-        "frame_count": 15,
-        "bytes": 1173537,
-        "start_frame": 83,
-        "end_frame": 97,
-        "duration": 1.0,
-        "keyframes": 1,
-        "delta_frames": 14
-      },
-      {
-        "index": 7,
-        "filename": "segment_0007.bin",
-        "frame_count": 15,
-        "bytes": 1145430,
-        "start_frame": 98,
-        "end_frame": 112,
-        "duration": 1.0,
-        "keyframes": 1,
-        "delta_frames": 14
-      },
-      {
-        "index": 8,
-        "filename": "segment_0008.bin",
-        "frame_count": 7,
-        "bytes": 318519,
-        "start_frame": 113,
+        "frame_count": 23,
+        "bytes": 1465667,
+        "start_frame": 97,
         "end_frame": 119,
-        "duration": 0.4666666666666667,
+        "duration": 1.5333333333333334,
         "keyframes": 1,
-        "delta_frames": 6
+        "delta_frames": 22
       }
     ]
   }
