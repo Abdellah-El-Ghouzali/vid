@@ -1,0 +1,481 @@
+{
+  "version": 3,
+  "video_id": 2,
+  "profile": "288p",
+  "width": 288,
+  "height": 512,
+  "fps": 15,
+  "total_frames": 675,
+  "duration": 45.0,
+  "segment_count": 52,
+  "segments": [
+    {
+      "index": 0,
+      "filename": "segment_0000.bin",
+      "frame_count": 8,
+      "bytes": 1329037,
+      "start_frame": 0,
+      "end_frame": 7,
+      "duration": 0.5333333333333333
+    },
+    {
+      "index": 1,
+      "filename": "segment_0001.bin",
+      "frame_count": 12,
+      "bytes": 1996736,
+      "start_frame": 8,
+      "end_frame": 19,
+      "duration": 0.8
+    },
+    {
+      "index": 2,
+      "filename": "segment_0002.bin",
+      "frame_count": 14,
+      "bytes": 1960072,
+      "start_frame": 20,
+      "end_frame": 33,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 3,
+      "filename": "segment_0003.bin",
+      "frame_count": 14,
+      "bytes": 1919970,
+      "start_frame": 34,
+      "end_frame": 47,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 4,
+      "filename": "segment_0004.bin",
+      "frame_count": 14,
+      "bytes": 1975800,
+      "start_frame": 48,
+      "end_frame": 61,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 5,
+      "filename": "segment_0005.bin",
+      "frame_count": 15,
+      "bytes": 1966558,
+      "start_frame": 62,
+      "end_frame": 76,
+      "duration": 1.0
+    },
+    {
+      "index": 6,
+      "filename": "segment_0006.bin",
+      "frame_count": 15,
+      "bytes": 1852757,
+      "start_frame": 77,
+      "end_frame": 91,
+      "duration": 1.0
+    },
+    {
+      "index": 7,
+      "filename": "segment_0007.bin",
+      "frame_count": 15,
+      "bytes": 1577442,
+      "start_frame": 92,
+      "end_frame": 106,
+      "duration": 1.0
+    },
+    {
+      "index": 8,
+      "filename": "segment_0008.bin",
+      "frame_count": 14,
+      "bytes": 1883204,
+      "start_frame": 107,
+      "end_frame": 120,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 9,
+      "filename": "segment_0009.bin",
+      "frame_count": 14,
+      "bytes": 1923708,
+      "start_frame": 121,
+      "end_frame": 134,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 10,
+      "filename": "segment_0010.bin",
+      "frame_count": 12,
+      "bytes": 1861913,
+      "start_frame": 135,
+      "end_frame": 146,
+      "duration": 0.8
+    },
+    {
+      "index": 11,
+      "filename": "segment_0011.bin",
+      "frame_count": 15,
+      "bytes": 1977753,
+      "start_frame": 147,
+      "end_frame": 161,
+      "duration": 1.0
+    },
+    {
+      "index": 12,
+      "filename": "segment_0012.bin",
+      "frame_count": 15,
+      "bytes": 1673162,
+      "start_frame": 162,
+      "end_frame": 176,
+      "duration": 1.0
+    },
+    {
+      "index": 13,
+      "filename": "segment_0013.bin",
+      "frame_count": 15,
+      "bytes": 1853543,
+      "start_frame": 177,
+      "end_frame": 191,
+      "duration": 1.0
+    },
+    {
+      "index": 14,
+      "filename": "segment_0014.bin",
+      "frame_count": 13,
+      "bytes": 1869969,
+      "start_frame": 192,
+      "end_frame": 204,
+      "duration": 0.8666666666666667
+    },
+    {
+      "index": 15,
+      "filename": "segment_0015.bin",
+      "frame_count": 14,
+      "bytes": 1906487,
+      "start_frame": 205,
+      "end_frame": 218,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 16,
+      "filename": "segment_0016.bin",
+      "frame_count": 15,
+      "bytes": 1604908,
+      "start_frame": 219,
+      "end_frame": 233,
+      "duration": 1.0
+    },
+    {
+      "index": 17,
+      "filename": "segment_0017.bin",
+      "frame_count": 12,
+      "bytes": 1900676,
+      "start_frame": 234,
+      "end_frame": 245,
+      "duration": 0.8
+    },
+    {
+      "index": 18,
+      "filename": "segment_0018.bin",
+      "frame_count": 13,
+      "bytes": 1912190,
+      "start_frame": 246,
+      "end_frame": 258,
+      "duration": 0.8666666666666667
+    },
+    {
+      "index": 19,
+      "filename": "segment_0019.bin",
+      "frame_count": 15,
+      "bytes": 1937387,
+      "start_frame": 259,
+      "end_frame": 273,
+      "duration": 1.0
+    },
+    {
+      "index": 20,
+      "filename": "segment_0020.bin",
+      "frame_count": 15,
+      "bytes": 1904391,
+      "start_frame": 274,
+      "end_frame": 288,
+      "duration": 1.0
+    },
+    {
+      "index": 21,
+      "filename": "segment_0021.bin",
+      "frame_count": 15,
+      "bytes": 1721850,
+      "start_frame": 289,
+      "end_frame": 303,
+      "duration": 1.0
+    },
+    {
+      "index": 22,
+      "filename": "segment_0022.bin",
+      "frame_count": 14,
+      "bytes": 1854250,
+      "start_frame": 304,
+      "end_frame": 317,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 23,
+      "filename": "segment_0023.bin",
+      "frame_count": 13,
+      "bytes": 1968864,
+      "start_frame": 318,
+      "end_frame": 330,
+      "duration": 0.8666666666666667
+    },
+    {
+      "index": 24,
+      "filename": "segment_0024.bin",
+      "frame_count": 14,
+      "bytes": 1912049,
+      "start_frame": 331,
+      "end_frame": 344,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 25,
+      "filename": "segment_0025.bin",
+      "frame_count": 15,
+      "bytes": 1649591,
+      "start_frame": 345,
+      "end_frame": 359,
+      "duration": 1.0
+    },
+    {
+      "index": 26,
+      "filename": "segment_0026.bin",
+      "frame_count": 15,
+      "bytes": 1946197,
+      "start_frame": 360,
+      "end_frame": 374,
+      "duration": 1.0
+    },
+    {
+      "index": 27,
+      "filename": "segment_0027.bin",
+      "frame_count": 10,
+      "bytes": 1828907,
+      "start_frame": 375,
+      "end_frame": 384,
+      "duration": 0.6666666666666666
+    },
+    {
+      "index": 28,
+      "filename": "segment_0028.bin",
+      "frame_count": 12,
+      "bytes": 1953854,
+      "start_frame": 385,
+      "end_frame": 396,
+      "duration": 0.8
+    },
+    {
+      "index": 29,
+      "filename": "segment_0029.bin",
+      "frame_count": 15,
+      "bytes": 1941951,
+      "start_frame": 397,
+      "end_frame": 411,
+      "duration": 1.0
+    },
+    {
+      "index": 30,
+      "filename": "segment_0030.bin",
+      "frame_count": 11,
+      "bytes": 1868901,
+      "start_frame": 412,
+      "end_frame": 422,
+      "duration": 0.7333333333333333
+    },
+    {
+      "index": 31,
+      "filename": "segment_0031.bin",
+      "frame_count": 13,
+      "bytes": 1995258,
+      "start_frame": 423,
+      "end_frame": 435,
+      "duration": 0.8666666666666667
+    },
+    {
+      "index": 32,
+      "filename": "segment_0032.bin",
+      "frame_count": 13,
+      "bytes": 1898432,
+      "start_frame": 436,
+      "end_frame": 448,
+      "duration": 0.8666666666666667
+    },
+    {
+      "index": 33,
+      "filename": "segment_0033.bin",
+      "frame_count": 12,
+      "bytes": 1868437,
+      "start_frame": 449,
+      "end_frame": 460,
+      "duration": 0.8
+    },
+    {
+      "index": 34,
+      "filename": "segment_0034.bin",
+      "frame_count": 14,
+      "bytes": 1918703,
+      "start_frame": 461,
+      "end_frame": 474,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 35,
+      "filename": "segment_0035.bin",
+      "frame_count": 15,
+      "bytes": 1950875,
+      "start_frame": 475,
+      "end_frame": 489,
+      "duration": 1.0
+    },
+    {
+      "index": 36,
+      "filename": "segment_0036.bin",
+      "frame_count": 11,
+      "bytes": 1965802,
+      "start_frame": 490,
+      "end_frame": 500,
+      "duration": 0.7333333333333333
+    },
+    {
+      "index": 37,
+      "filename": "segment_0037.bin",
+      "frame_count": 11,
+      "bytes": 1980364,
+      "start_frame": 501,
+      "end_frame": 511,
+      "duration": 0.7333333333333333
+    },
+    {
+      "index": 38,
+      "filename": "segment_0038.bin",
+      "frame_count": 12,
+      "bytes": 1975701,
+      "start_frame": 512,
+      "end_frame": 523,
+      "duration": 0.8
+    },
+    {
+      "index": 39,
+      "filename": "segment_0039.bin",
+      "frame_count": 13,
+      "bytes": 1859895,
+      "start_frame": 524,
+      "end_frame": 536,
+      "duration": 0.8666666666666667
+    },
+    {
+      "index": 40,
+      "filename": "segment_0040.bin",
+      "frame_count": 10,
+      "bytes": 1866740,
+      "start_frame": 537,
+      "end_frame": 546,
+      "duration": 0.6666666666666666
+    },
+    {
+      "index": 41,
+      "filename": "segment_0041.bin",
+      "frame_count": 9,
+      "bytes": 1827306,
+      "start_frame": 547,
+      "end_frame": 555,
+      "duration": 0.6
+    },
+    {
+      "index": 42,
+      "filename": "segment_0042.bin",
+      "frame_count": 10,
+      "bytes": 1955098,
+      "start_frame": 556,
+      "end_frame": 565,
+      "duration": 0.6666666666666666
+    },
+    {
+      "index": 43,
+      "filename": "segment_0043.bin",
+      "frame_count": 11,
+      "bytes": 1903737,
+      "start_frame": 566,
+      "end_frame": 576,
+      "duration": 0.7333333333333333
+    },
+    {
+      "index": 44,
+      "filename": "segment_0044.bin",
+      "frame_count": 11,
+      "bytes": 1950630,
+      "start_frame": 577,
+      "end_frame": 587,
+      "duration": 0.7333333333333333
+    },
+    {
+      "index": 45,
+      "filename": "segment_0045.bin",
+      "frame_count": 12,
+      "bytes": 1915788,
+      "start_frame": 588,
+      "end_frame": 599,
+      "duration": 0.8
+    },
+    {
+      "index": 46,
+      "filename": "segment_0046.bin",
+      "frame_count": 12,
+      "bytes": 1903931,
+      "start_frame": 600,
+      "end_frame": 611,
+      "duration": 0.8
+    },
+    {
+      "index": 47,
+      "filename": "segment_0047.bin",
+      "frame_count": 14,
+      "bytes": 1999155,
+      "start_frame": 612,
+      "end_frame": 625,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 48,
+      "filename": "segment_0048.bin",
+      "frame_count": 13,
+      "bytes": 1953768,
+      "start_frame": 626,
+      "end_frame": 638,
+      "duration": 0.8666666666666667
+    },
+    {
+      "index": 49,
+      "filename": "segment_0049.bin",
+      "frame_count": 14,
+      "bytes": 1992047,
+      "start_frame": 639,
+      "end_frame": 652,
+      "duration": 0.9333333333333333
+    },
+    {
+      "index": 50,
+      "filename": "segment_0050.bin",
+      "frame_count": 10,
+      "bytes": 1831735,
+      "start_frame": 653,
+      "end_frame": 662,
+      "duration": 0.6666666666666666
+    },
+    {
+      "index": 51,
+      "filename": "segment_0051.bin",
+      "frame_count": 12,
+      "bytes": 1952119,
+      "start_frame": 663,
+      "end_frame": 674,
+      "duration": 0.8
+    }
+  ]
+}
