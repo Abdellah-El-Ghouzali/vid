@@ -1,6 +1,6 @@
 {
   "576p": {
-    "version": 2,
+    "version": 3,
     "profile": "576p",
     "width": 576,
     "height": 1024,
@@ -13,6 +13,7 @@
     "compression": "zstd",
     "compression_level": 3,
     "tile_size": 8,
+    "delta_max_ratio": 0.9,
     "segment_count": 71,
     "first_segment_frames": 8,
     "target_segment_frames": 15,
