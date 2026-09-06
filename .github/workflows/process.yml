@@ -65,6 +65,7 @@ jobs:
         run: |
           test -f chunks/576p/manifest.json
 
+          echo "Segments:"
           find chunks/576p \
             -maxdepth 1 \
             -type f \
@@ -75,7 +76,7 @@ jobs:
           echo "Output size:"
           du -sh chunks
 
-      - name: Commit generated segments
+      - name: Commit generated video
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
