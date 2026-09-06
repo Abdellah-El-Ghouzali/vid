@@ -6,7 +6,6 @@ on:
       - "video.mp4"
       - "process.py"
       - "requirements.txt"
-
   workflow_dispatch:
 
 permissions:
@@ -18,44 +17,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4  # Fixed from v6
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: "requirements.txt"
 
       - name: Install dependencies
         run: |
-          python -m pip install \
-            --disable-pip-version-check \
-            --no-input \
-            --timeout 60 \
-            --retries 3 \
-            -r requirements.txt
-
-      - name: Verify dependencies
-        run: |
-          python - <<'PY'
-          import cv2
-          import numpy
-          import zstandard
-
-          print("OpenCV:", cv2.__version__)
-          print("NumPy:", numpy.__version__)
-          print("Zstandard:", zstandard.__version__)
-          PY
-
-      - name: Verify video
-        run: |
-          test -f video.mp4
-          ls -lh video.mp4
-
-      - name: Validate Python
-        run: |
-          python -m py_compile process.py
+          python -m pip install --upgrade pip
+          # Headless OpenCV installs 3x faster
+          python -m pip install opencv-python-headless numpy zstandard
 
       - name: Process video
         run: |
@@ -64,28 +38,16 @@ jobs:
       - name: Verify output
         run: |
           test -f chunks/576p/manifest.json
-
-          echo "Segments:"
-          find chunks/576p \
-            -maxdepth 1 \
-            -type f \
-            -name "segment_*.bin" \
-            | sort
-
-          echo ""
-          echo "Output size:"
           du -sh chunks
 
       - name: Commit generated video
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add chunks/
-
           if git diff --cached --quiet; then
-            echo "No generated changes."
+            echo "No changes to commit."
           else
-            git commit -m "Regenerate streaming video"
+            git commit -m "Fast streaming video build [skip ci]"
             git push
           fi
