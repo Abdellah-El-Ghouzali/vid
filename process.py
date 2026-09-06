@@ -11,7 +11,7 @@ import zstandard as zstd
 # ============================================================
 # CONFIGURATION
 # ============================================================
-VERSION = 4  # Version 4 forces re-encoding of old bloated v3 chunks
+VERSION = 5  # Version 5: 2.0s segments (cuts HTTP requests in half)
 FPS = 15
 MAX_SECONDS = None  # None = full video duration
 
@@ -19,12 +19,12 @@ PROFILES = {
     "288p": (288, 512)
 }
 
-FIRST_SEGMENT_FRAMES = 8   # 0.53s initial keyframe segment for instant startup
-SEGMENT_FRAMES = 15        # 1.0s segments
+FIRST_SEGMENT_FRAMES = 5   # ~0.33s ultralight startup segment (< 150 KB)
+SEGMENT_FRAMES = 30        # 2.0s segments (halves HTTP calls, doubles buffer runway)
 MAX_SEGMENT_BYTES = 1_500_000
 TILE_SIZE = 8
 DELTA_MAX_RATIO = 0.85
-ZSTD_LEVEL = 7             # High-efficiency compression for compact bundles
+ZSTD_LEVEL = 9             # Maximum compression for fast downloads
 
 # Precomputed Lookup Tables for instant RGB565 conversion
 VALS = np.arange(256, dtype=np.uint16)
@@ -67,12 +67,6 @@ def write_u32(file, value):
 # ============================================================
 
 def build_delta_payload(prev_tiles, curr_tiles, tiles_y, tiles_x, tile_size):
-    """
-    Perceptual Noise Deadzoning on RGB565:
-    Filters out microscopic camera sensor & quantization noise so that static
-    backgrounds don't trigger massive false keyframe fallbacks.
-    """
-    # Extract RGB components
     r_prev = (prev_tiles >> 11) & 0x1F
     g_prev = (prev_tiles >> 5) & 0x3F
     b_prev = prev_tiles & 0x1F
@@ -85,10 +79,7 @@ def build_delta_payload(prev_tiles, curr_tiles, tiles_y, tiles_x, tile_size):
     diff_g = np.abs(g_curr.astype(np.int16) - g_prev.astype(np.int16))
     diff_b = np.abs(b_curr.astype(np.int16) - b_prev.astype(np.int16))
 
-    # A pixel changed if it exceeds imperceptible threshold
     sig_pixel = (diff_r > 1) | (diff_g > 2) | (diff_b > 1)
-
-    # Tile (8x8 = 64 pixels) changed only if at least 2 pixels had significant movement
     diff_mask = np.count_nonzero(sig_pixel, axis=(2, 3)) >= 2
     ys, xs = np.nonzero(diff_mask)
     count = len(ys)
@@ -132,10 +123,6 @@ def write_segment(profile_dir, segment_index, encoded_frames):
     }
 
 
-# ============================================================
-# BUNDLE GENERATOR (GUARANTEED < 50MB FOR GITHUB SAFETY)
-# ============================================================
-
 def generate_bundle(profile_dir, manifest_path):
     with open(manifest_path, "rb") as mf:
         manifest_bytes = mf.read()
@@ -147,14 +134,10 @@ def generate_bundle(profile_dir, manifest_path):
 
     bundle_path = os.path.join(profile_dir, "bundle.bin")
     with open(bundle_path, "wb") as bf:
-        # 1. Manifest Header
         write_u32(bf, len(manifest_bytes))
         bf.write(manifest_bytes)
-
-        # 2. Segment Count
         write_u32(bf, len(segments))
 
-        # 3. Packed Segments
         for seg in segments:
             seg_file = os.path.join(profile_dir, seg["filename"])
             seg_size = os.path.getsize(seg_file)
@@ -254,7 +237,8 @@ def process_profile(video_path, output_dir, profile_name, width, height):
                 frame_data = compressor.compress(curr_frame.tobytes())
             else:
                 delta_compressed = compressor.compress(delta_payload)
-                if changed_count < total_tiles * 0.35:
+                # Keep delta active across camera movement up to 60% tile changes
+                if changed_count < total_tiles * 0.60:
                     frame_type = 1
                     frame_data = delta_compressed
                 else:
@@ -313,19 +297,14 @@ def process_profile(video_path, output_dir, profile_name, width, height):
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    # Generate bundle.bin directly in profile_dir (no duplicate files created)
     bundle_res = generate_bundle(profile_dir, manifest_path)
     if bundle_res:
         _, b_size = bundle_res
-        print(f"     -> Generated bundle.bin: {b_size / (1024 * 1024):.2f} MB (100% GitHub-Safe)")
+        print(f"     -> Generated bundle.bin: {b_size / (1024 * 1024):.2f} MB")
 
     print(f"     -> Finished: {total_frames} frames ({manifest['duration']:.1f}s) in {len(segments)} segments.")
     return manifest
 
-
-# ============================================================
-# DISCOVERY & INCREMENTAL BUILD
-# ============================================================
 
 def parse_video_id(name: str):
     match = re.search(r'\d+', name)
@@ -358,7 +337,6 @@ def discover_videos(base_dir="videos"):
 
 
 def should_skip(video_path, output_dir):
-    """Skips only if encoded with the new Version 4 and up-to-date."""
     for profile_name in PROFILES.keys():
         profile_dir = os.path.join(output_dir, profile_name)
         manifest_path = os.path.join(profile_dir, "manifest.json")
@@ -370,7 +348,6 @@ def should_skip(video_path, output_dir):
         try:
             with open(manifest_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # Re-encode older bloated manifests to Version 4
             if data.get("version", 0) < VERSION:
                 return False
         except Exception:
