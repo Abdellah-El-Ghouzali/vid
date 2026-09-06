@@ -1,6 +1,6 @@
 {
   "288p": {
-    "version": 3,
+    "version": 4,
     "profile": "288p",
     "width": 288,
     "height": 512,
@@ -11,177 +11,177 @@
     "format": "RGB565_LE",
     "bytes_per_pixel": 2,
     "compression": "zstd",
-    "compression_level": 3,
+    "compression_level": 7,
     "tile_size": 8,
-    "delta_max_ratio": 0.9,
+    "delta_max_ratio": 0.85,
     "segment_count": 20,
     "first_segment_frames": 8,
     "target_segment_frames": 15,
-    "max_segment_bytes": 2000000,
+    "max_segment_bytes": 1500000,
     "raw_bytes": 86114304,
-    "segment_bytes": 24839439,
+    "segment_bytes": 17698761,
     "segments": [
       {
         "index": 0,
         "filename": "segment_0000.bin",
         "frame_count": 8,
-        "bytes": 481226,
+        "bytes": 357555,
         "start_frame": 0,
         "end_frame": 7,
         "duration": 0.5333333333333333,
-        "keyframes": 8,
-        "delta_frames": 0
+        "keyframes": 1,
+        "delta_frames": 7
       },
       {
         "index": 1,
         "filename": "segment_0001.bin",
         "frame_count": 15,
-        "bytes": 1188197,
+        "bytes": 943577,
         "start_frame": 8,
         "end_frame": 22,
         "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "keyframes": 7,
+        "delta_frames": 8
       },
       {
         "index": 2,
         "filename": "segment_0002.bin",
         "frame_count": 15,
-        "bytes": 1534648,
+        "bytes": 1212303,
         "start_frame": 23,
         "end_frame": 37,
         "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "keyframes": 7,
+        "delta_frames": 8
       },
       {
         "index": 3,
         "filename": "segment_0003.bin",
         "frame_count": 15,
-        "bytes": 1554899,
+        "bytes": 950626,
         "start_frame": 38,
         "end_frame": 52,
         "duration": 1.0,
-        "keyframes": 14,
-        "delta_frames": 1
+        "keyframes": 2,
+        "delta_frames": 13
       },
       {
         "index": 4,
         "filename": "segment_0004.bin",
         "frame_count": 15,
-        "bytes": 1587310,
+        "bytes": 880224,
         "start_frame": 53,
         "end_frame": 67,
         "duration": 1.0,
-        "keyframes": 14,
-        "delta_frames": 1
+        "keyframes": 2,
+        "delta_frames": 13
       },
       {
         "index": 5,
         "filename": "segment_0005.bin",
         "frame_count": 15,
-        "bytes": 1507226,
+        "bytes": 658542,
         "start_frame": 68,
         "end_frame": 82,
         "duration": 1.0,
-        "keyframes": 11,
-        "delta_frames": 4
+        "keyframes": 1,
+        "delta_frames": 14
       },
       {
         "index": 6,
         "filename": "segment_0006.bin",
         "frame_count": 15,
-        "bytes": 1412220,
+        "bytes": 624683,
         "start_frame": 83,
         "end_frame": 97,
         "duration": 1.0,
-        "keyframes": 9,
-        "delta_frames": 6
+        "keyframes": 3,
+        "delta_frames": 12
       },
       {
         "index": 7,
         "filename": "segment_0007.bin",
-        "frame_count": 15,
-        "bytes": 1786601,
+        "frame_count": 14,
+        "bytes": 1495622,
         "start_frame": 98,
-        "end_frame": 112,
-        "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "end_frame": 111,
+        "duration": 0.9333333333333333,
+        "keyframes": 12,
+        "delta_frames": 2
       },
       {
         "index": 8,
         "filename": "segment_0008.bin",
         "frame_count": 15,
-        "bytes": 1502848,
-        "start_frame": 113,
-        "end_frame": 127,
+        "bytes": 1402028,
+        "start_frame": 112,
+        "end_frame": 126,
         "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "keyframes": 13,
+        "delta_frames": 2
       },
       {
         "index": 9,
         "filename": "segment_0009.bin",
         "frame_count": 15,
-        "bytes": 1272804,
-        "start_frame": 128,
-        "end_frame": 142,
+        "bytes": 896078,
+        "start_frame": 127,
+        "end_frame": 141,
         "duration": 1.0,
-        "keyframes": 14,
-        "delta_frames": 1
+        "keyframes": 5,
+        "delta_frames": 10
       },
       {
         "index": 10,
         "filename": "segment_0010.bin",
         "frame_count": 15,
-        "bytes": 1360830,
-        "start_frame": 143,
-        "end_frame": 157,
+        "bytes": 917502,
+        "start_frame": 142,
+        "end_frame": 156,
         "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "keyframes": 8,
+        "delta_frames": 7
       },
       {
         "index": 11,
         "filename": "segment_0011.bin",
         "frame_count": 15,
-        "bytes": 1142086,
-        "start_frame": 158,
-        "end_frame": 172,
+        "bytes": 941716,
+        "start_frame": 157,
+        "end_frame": 171,
         "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "keyframes": 8,
+        "delta_frames": 7
       },
       {
         "index": 12,
         "filename": "segment_0012.bin",
         "frame_count": 15,
-        "bytes": 911425,
-        "start_frame": 173,
-        "end_frame": 187,
+        "bytes": 697984,
+        "start_frame": 172,
+        "end_frame": 186,
         "duration": 1.0,
-        "keyframes": 14,
-        "delta_frames": 1
+        "keyframes": 8,
+        "delta_frames": 7
       },
       {
         "index": 13,
         "filename": "segment_0013.bin",
         "frame_count": 15,
-        "bytes": 1220962,
-        "start_frame": 188,
-        "end_frame": 202,
+        "bytes": 948487,
+        "start_frame": 187,
+        "end_frame": 201,
         "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "keyframes": 5,
+        "delta_frames": 10
       },
       {
         "index": 14,
         "filename": "segment_0014.bin",
         "frame_count": 15,
-        "bytes": 1317079,
-        "start_frame": 203,
-        "end_frame": 217,
+        "bytes": 1263878,
+        "start_frame": 202,
+        "end_frame": 216,
         "duration": 1.0,
         "keyframes": 15,
         "delta_frames": 0
@@ -190,56 +190,56 @@
         "index": 15,
         "filename": "segment_0015.bin",
         "frame_count": 15,
-        "bytes": 1167981,
-        "start_frame": 218,
-        "end_frame": 232,
+        "bytes": 711326,
+        "start_frame": 217,
+        "end_frame": 231,
         "duration": 1.0,
-        "keyframes": 13,
-        "delta_frames": 2
+        "keyframes": 2,
+        "delta_frames": 13
       },
       {
         "index": 16,
         "filename": "segment_0016.bin",
         "frame_count": 15,
-        "bytes": 1103126,
-        "start_frame": 233,
-        "end_frame": 247,
+        "bytes": 762657,
+        "start_frame": 232,
+        "end_frame": 246,
         "duration": 1.0,
-        "keyframes": 12,
-        "delta_frames": 3
+        "keyframes": 4,
+        "delta_frames": 11
       },
       {
         "index": 17,
         "filename": "segment_0017.bin",
         "frame_count": 15,
-        "bytes": 866880,
-        "start_frame": 248,
-        "end_frame": 262,
+        "bytes": 688813,
+        "start_frame": 247,
+        "end_frame": 261,
         "duration": 1.0,
-        "keyframes": 15,
-        "delta_frames": 0
+        "keyframes": 10,
+        "delta_frames": 5
       },
       {
         "index": 18,
         "filename": "segment_0018.bin",
         "frame_count": 15,
-        "bytes": 989201,
-        "start_frame": 263,
-        "end_frame": 277,
+        "bytes": 687328,
+        "start_frame": 262,
+        "end_frame": 276,
         "duration": 1.0,
-        "keyframes": 14,
-        "delta_frames": 1
+        "keyframes": 6,
+        "delta_frames": 9
       },
       {
         "index": 19,
         "filename": "segment_0019.bin",
-        "frame_count": 14,
-        "bytes": 931890,
-        "start_frame": 278,
+        "frame_count": 15,
+        "bytes": 657832,
+        "start_frame": 277,
         "end_frame": 291,
-        "duration": 0.9333333333333333,
-        "keyframes": 14,
-        "delta_frames": 0
+        "duration": 1.0,
+        "keyframes": 2,
+        "delta_frames": 13
       }
     ]
   }
