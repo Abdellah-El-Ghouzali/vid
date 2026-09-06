@@ -15,7 +15,7 @@ FPS = 15
 MAX_SECONDS = 45
 
 PROFILES = {
-    "576p": (576, 1024)
+    "288p": (288, 512)
 }
 
 FIRST_SEGMENT_FRAMES = 8
