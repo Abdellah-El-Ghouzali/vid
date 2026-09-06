@@ -1,22 +1,28 @@
-name: Build Video
+name: Build Videos
 
 on:
   push:
     paths:
-      - "video.mp4"
+      - "videos/**"
       - "process.py"
       - "requirements.txt"
   workflow_dispatch:
+    inputs:
+      force_rebuild:
+        description: 'Force rebuild all videos'
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
 concurrency:
-  group: build-video-${{ github.ref }}
+  group: build-videos-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-video:
+  build-videos:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,43 +36,37 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: "requirements.txt"
 
       - name: Install dependencies
         run: |
-          python -m pip install \
-            --disable-pip-version-check \
-            --prefer-binary \
+          python -m pip install --disable-pip-version-check --prefer-binary \
             opencv-python-headless numpy zstandard
 
-      - name: Verify video input
+      - name: Process videos
         run: |
-          test -f video.mp4
-          ls -lh video.mp4
+          if [ "${{ github.event.inputs.force_rebuild }}" = "true" ]; then
+            python process.py --force
+          else
+            python process.py
+          fi
 
-      - name: Process video
+      - name: Verify output
         run: |
-          python process.py
-
-      - name: Verify generated output
-        run: |
-          # Checks master manifest or any profile manifest dynamically (288p, 360p, 576p)
-          test -f chunks/manifest.json || test -n "$(find chunks -name 'manifest.json' -print -quit)"
-          echo "Generated chunks:"
+          test -f chunks/index.json
+          echo "Output summary:"
           du -sh chunks/*
 
-      - name: Commit and push generated video
+      - name: Commit and push generated chunks
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # -A stages new, modified, and deleted segments cleanly
           git add -A chunks/
 
           if git diff --cached --quiet; then
-            echo "No changes detected in chunks."
+            echo "No changes in chunks to commit."
           else
-            git commit -m "Generate streaming video chunks [skip ci]"
+            git commit -m "Auto-generate video chunks [skip ci]"
             git pull --rebase origin ${{ github.ref_name }} || true
             git push
           fi
