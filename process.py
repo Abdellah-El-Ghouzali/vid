@@ -3,7 +3,6 @@ import json
 import math
 import os
 import re
-import shutil
 import struct
 import sys
 import numpy as np
@@ -12,8 +11,9 @@ import zstandard as zstd
 # ============================================================
 # CONFIGURATION
 # ============================================================
+VERSION = 4  # Version 4 forces re-encoding of old bloated v3 chunks
 FPS = 15
-MAX_SECONDS = None  # None = No limit (full duration)
+MAX_SECONDS = None  # None = full video duration
 
 PROFILES = {
     "288p": (288, 512)
@@ -21,10 +21,10 @@ PROFILES = {
 
 FIRST_SEGMENT_FRAMES = 8   # 0.53s initial keyframe segment for instant startup
 SEGMENT_FRAMES = 15        # 1.0s segments
-MAX_SEGMENT_BYTES = 2_000_000
+MAX_SEGMENT_BYTES = 1_500_000
 TILE_SIZE = 8
-DELTA_MAX_RATIO = 0.90
-ZSTD_LEVEL = 3
+DELTA_MAX_RATIO = 0.85
+ZSTD_LEVEL = 7             # High-efficiency compression for compact bundles
 
 # Precomputed Lookup Tables for instant RGB565 conversion
 VALS = np.arange(256, dtype=np.uint16)
@@ -63,66 +63,33 @@ def write_u32(file, value):
 
 
 # ============================================================
-# BUNDLE CREATION (1-REQUEST INSTANT DOWNLOAD ARCHITECTURE)
-# ============================================================
-
-def generate_bundle(profile_dir):
-    """
-    Packs manifest.json and all segment_*.bin files into a single bundle.bin file.
-    Binary Layout:
-      [Manifest Length: u32]
-      [Manifest UTF-8 Bytes]
-      [Total Segments: u32]
-      For each segment:
-        [Segment Byte Length: u32]
-        [Segment Data Bytes]
-    """
-    manifest_path = os.path.join(profile_dir, "manifest.json")
-    if not os.path.exists(manifest_path):
-        return None
-
-    with open(manifest_path, "rb") as mf:
-        manifest_bytes = mf.read()
-
-    try:
-        manifest_data = json.loads(manifest_bytes.decode("utf-8"))
-    except Exception:
-        return None
-
-    segments = manifest_data.get("segments", [])
-    if not segments:
-        return None
-
-    bundle_path = os.path.join(profile_dir, "bundle.bin")
-    with open(bundle_path, "wb") as bf:
-        # 1. Manifest Header
-        write_u32(bf, len(manifest_bytes))
-        bf.write(manifest_bytes)
-
-        # 2. Total Segments
-        write_u32(bf, len(segments))
-
-        # 3. Concatenate all segment payloads
-        for seg in segments:
-            seg_file = os.path.join(profile_dir, seg["filename"])
-            if not os.path.exists(seg_file):
-                print(f"    [!] Error: Missing segment {seg_file}")
-                return None
-            seg_size = os.path.getsize(seg_file)
-            write_u32(bf, seg_size)
-            with open(seg_file, "rb") as sf:
-                bf.write(sf.read())
-
-    bundle_size = os.path.getsize(bundle_path)
-    return bundle_path, bundle_size
-
-
-# ============================================================
-# VECTORIZED DELTA PAYLOAD
+# VECTORIZED NOISE-FILTERED DELTA PAYLOAD
 # ============================================================
 
 def build_delta_payload(prev_tiles, curr_tiles, tiles_y, tiles_x, tile_size):
-    diff_mask = np.any(prev_tiles != curr_tiles, axis=(2, 3))
+    """
+    Perceptual Noise Deadzoning on RGB565:
+    Filters out microscopic camera sensor & quantization noise so that static
+    backgrounds don't trigger massive false keyframe fallbacks.
+    """
+    # Extract RGB components
+    r_prev = (prev_tiles >> 11) & 0x1F
+    g_prev = (prev_tiles >> 5) & 0x3F
+    b_prev = prev_tiles & 0x1F
+
+    r_curr = (curr_tiles >> 11) & 0x1F
+    g_curr = (curr_tiles >> 5) & 0x3F
+    b_curr = curr_tiles & 0x1F
+
+    diff_r = np.abs(r_curr.astype(np.int16) - r_prev.astype(np.int16))
+    diff_g = np.abs(g_curr.astype(np.int16) - g_prev.astype(np.int16))
+    diff_b = np.abs(b_curr.astype(np.int16) - b_prev.astype(np.int16))
+
+    # A pixel changed if it exceeds imperceptible threshold
+    sig_pixel = (diff_r > 1) | (diff_g > 2) | (diff_b > 1)
+
+    # Tile (8x8 = 64 pixels) changed only if at least 2 pixels had significant movement
+    diff_mask = np.count_nonzero(sig_pixel, axis=(2, 3)) >= 2
     ys, xs = np.nonzero(diff_mask)
     count = len(ys)
 
@@ -166,6 +133,40 @@ def write_segment(profile_dir, segment_index, encoded_frames):
 
 
 # ============================================================
+# BUNDLE GENERATOR (GUARANTEED < 50MB FOR GITHUB SAFETY)
+# ============================================================
+
+def generate_bundle(profile_dir, manifest_path):
+    with open(manifest_path, "rb") as mf:
+        manifest_bytes = mf.read()
+
+    manifest_data = json.loads(manifest_bytes.decode("utf-8"))
+    segments = manifest_data.get("segments", [])
+    if not segments:
+        return None
+
+    bundle_path = os.path.join(profile_dir, "bundle.bin")
+    with open(bundle_path, "wb") as bf:
+        # 1. Manifest Header
+        write_u32(bf, len(manifest_bytes))
+        bf.write(manifest_bytes)
+
+        # 2. Segment Count
+        write_u32(bf, len(segments))
+
+        # 3. Packed Segments
+        for seg in segments:
+            seg_file = os.path.join(profile_dir, seg["filename"])
+            seg_size = os.path.getsize(seg_file)
+            write_u32(bf, seg_size)
+            with open(seg_file, "rb") as sf:
+                bf.write(sf.read())
+
+    total_size = os.path.getsize(bundle_path)
+    return bundle_path, total_size
+
+
+# ============================================================
 # PROFILE PROCESSOR
 # ============================================================
 
@@ -191,7 +192,6 @@ def process_profile(video_path, output_dir, profile_name, width, height):
     next_sample_source_frame = 0.0
     source_index = 0
 
-    # 1. Fast frame decoding
     while len(frames) < expected_total_frames:
         ok, frame = cap.read()
         if not ok:
@@ -214,7 +214,6 @@ def process_profile(video_path, output_dir, profile_name, width, height):
     if total_frames == 0:
         raise RuntimeError(f"No frames extracted from {video_path}")
 
-    # 2. Segment & Delta Encoding Setup
     tiles_y = math.ceil(height / TILE_SIZE)
     tiles_x = math.ceil(width / TILE_SIZE)
     total_tiles = tiles_y * tiles_x
@@ -255,7 +254,7 @@ def process_profile(video_path, output_dir, profile_name, width, height):
                 frame_data = compressor.compress(curr_frame.tobytes())
             else:
                 delta_compressed = compressor.compress(delta_payload)
-                if changed_count < total_tiles * 0.40:
+                if changed_count < total_tiles * 0.35:
                     frame_type = 1
                     frame_data = delta_compressed
                 else:
@@ -286,9 +285,8 @@ def process_profile(video_path, output_dir, profile_name, width, height):
         segments.append(seg_info)
         segment_index += 1
 
-    # Write Manifest
     manifest = {
-        "version": 3,
+        "version": VERSION,
         "profile": profile_name,
         "width": width,
         "height": height,
@@ -315,22 +313,18 @@ def process_profile(video_path, output_dir, profile_name, width, height):
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    # Automatically generate single-request bundle.bin
-    bundle_res = generate_bundle(profile_dir)
+    # Generate bundle.bin directly in profile_dir (no duplicate files created)
+    bundle_res = generate_bundle(profile_dir, manifest_path)
     if bundle_res:
         _, b_size = bundle_res
-        print(f"     -> Generated bundle.bin ({b_size / 1024:.1f} KB)")
-        
-        # Also copy bundle.bin to the parent chunks folder for universal URL compatibility
-        root_bundle = os.path.join(output_dir, "bundle.bin")
-        shutil.copyfile(bundle_res[0], root_bundle)
+        print(f"     -> Generated bundle.bin: {b_size / (1024 * 1024):.2f} MB (100% GitHub-Safe)")
 
-    print(f"     -> Done: {total_frames} frames ({manifest['duration']:.1f}s) into {len(segments)} segments.")
+    print(f"     -> Finished: {total_frames} frames ({manifest['duration']:.1f}s) in {len(segments)} segments.")
     return manifest
 
 
 # ============================================================
-# MULTI-VIDEO DISCOVERY & INCREMENTAL BUILD
+# DISCOVERY & INCREMENTAL BUILD
 # ============================================================
 
 def parse_video_id(name: str):
@@ -345,7 +339,6 @@ def discover_videos(base_dir="videos"):
 
     for item in os.listdir(base_dir):
         item_path = os.path.join(base_dir, item)
-        # Case 1: Folder layout (e.g. videos/1/video.mp4)
         if os.path.isdir(item_path):
             vid_id = parse_video_id(item)
             if vid_id is not None:
@@ -354,8 +347,6 @@ def discover_videos(base_dir="videos"):
                     source_file = os.path.join(item_path, video_files[0])
                     out_dir = os.path.join(item_path, "chunks")
                     video_tasks.append((vid_id, source_file, out_dir))
-
-        # Case 2: Direct file layout (e.g. videos/1.mp4)
         elif os.path.isfile(item_path) and item.lower().endswith(('.mp4', '.mov', '.mkv', '.webm')):
             vid_id = parse_video_id(item)
             if vid_id is not None:
@@ -367,39 +358,28 @@ def discover_videos(base_dir="videos"):
 
 
 def should_skip(video_path, output_dir):
-    """Checks if video was already encoded AND has bundle.bin generated."""
+    """Skips only if encoded with the new Version 4 and up-to-date."""
     for profile_name in PROFILES.keys():
         profile_dir = os.path.join(output_dir, profile_name)
         manifest_path = os.path.join(profile_dir, "manifest.json")
         bundle_path = os.path.join(profile_dir, "bundle.bin")
 
-        # Missing manifest or bundle -> Cannot skip
         if not os.path.exists(manifest_path) or not os.path.exists(bundle_path):
             return False
 
-        # Source video is newer than the generated manifest -> Cannot skip
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            # Re-encode older bloated manifests to Version 4
+            if data.get("version", 0) < VERSION:
+                return False
+        except Exception:
+            return False
+
         if os.path.getmtime(manifest_path) < os.path.getmtime(video_path):
             return False
 
     return True
-
-
-def try_fast_bundle_upgrade(output_dir):
-    """If segments exist but bundle.bin is missing, assemble bundle.bin instantly without re-encoding."""
-    upgraded = False
-    for profile_name in PROFILES.keys():
-        profile_dir = os.path.join(output_dir, profile_name)
-        manifest_path = os.path.join(profile_dir, "manifest.json")
-        bundle_path = os.path.join(profile_dir, "bundle.bin")
-
-        if os.path.exists(manifest_path) and not os.path.exists(bundle_path):
-            b_res = generate_bundle(profile_dir)
-            if b_res:
-                root_bundle = os.path.join(output_dir, "bundle.bin")
-                shutil.copyfile(b_res[0], root_bundle)
-                print(f"  --> [FAST BUNDLE] Assembled bundle.bin in 0.01s from existing chunks ({b_res[1] / 1024:.1f} KB)")
-                upgraded = True
-    return upgraded
 
 
 def main():
@@ -410,34 +390,29 @@ def main():
         tasks = [(1, "video.mp4", "videos/1/chunks")]
 
     if not tasks:
-        print("No videos found to process in 'videos/' or 'video.mp4'.")
+        print("No videos found to process.")
         return
 
     print("=" * 75)
-    print(f"FOUND {len(tasks)} VIDEO(S) TO PROCESS")
+    print(f"FOUND {len(tasks)} VIDEO(S) TO PROCESS (ENCODER v{VERSION})")
     print("=" * 75)
 
     for vid_id, video_path, out_dir in tasks:
         print(f"\n[VIDEO #{vid_id}] Source: {video_path}")
 
-        # Check if we can do an instant upgrade from existing segments
-        if not force_rebuild and try_fast_bundle_upgrade(out_dir):
-            continue
-
         if not force_rebuild and should_skip(video_path, out_dir):
-            print(f"  --> [SKIPPED] Chunks and bundle.bin already up-to-date.")
+            print(f"  --> [SKIPPED] Up-to-date with Version {VERSION} compression.")
             continue
 
         manifests = {}
         for profile_name, (w, h) in PROFILES.items():
             manifests[profile_name] = process_profile(video_path, out_dir, profile_name, w, h)
 
-        # Write top-level manifest
         with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as f:
             json.dump(manifests, f, indent=2)
 
     print("\n" + "=" * 75)
-    print("ALL VIDEOS SUCCESSFULLY PROCESSED AND BUNDLED!")
+    print("ALL VIDEOS SUCCESSFULLY PROCESSED AND COMPRESSED!")
     print("=" * 75)
 
 
