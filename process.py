@@ -13,13 +13,13 @@ import zstandard as zstd
 # CONFIGURATION
 # ============================================================
 FPS = 15
-MAX_SECONDS = None  # None = No limit (full 45s, 60s, 120s+ duration)
+MAX_SECONDS = None  # None = No limit (full duration)
 
 PROFILES = {
     "288p": (288, 512)
 }
 
-FIRST_SEGMENT_FRAMES = 8   # 0.53s initial keyframe segment for instant (<1s) startup
+FIRST_SEGMENT_FRAMES = 8   # 0.53s initial keyframe segment for instant startup
 SEGMENT_FRAMES = 15        # 1.0s segments
 MAX_SEGMENT_BYTES = 2_000_000
 TILE_SIZE = 8
@@ -60,6 +60,61 @@ def frame_to_rgb565_array(frame):
 
 def write_u32(file, value):
     file.write(struct.pack("<I", int(value)))
+
+
+# ============================================================
+# BUNDLE CREATION (1-REQUEST INSTANT DOWNLOAD ARCHITECTURE)
+# ============================================================
+
+def generate_bundle(profile_dir):
+    """
+    Packs manifest.json and all segment_*.bin files into a single bundle.bin file.
+    Binary Layout:
+      [Manifest Length: u32]
+      [Manifest UTF-8 Bytes]
+      [Total Segments: u32]
+      For each segment:
+        [Segment Byte Length: u32]
+        [Segment Data Bytes]
+    """
+    manifest_path = os.path.join(profile_dir, "manifest.json")
+    if not os.path.exists(manifest_path):
+        return None
+
+    with open(manifest_path, "rb") as mf:
+        manifest_bytes = mf.read()
+
+    try:
+        manifest_data = json.loads(manifest_bytes.decode("utf-8"))
+    except Exception:
+        return None
+
+    segments = manifest_data.get("segments", [])
+    if not segments:
+        return None
+
+    bundle_path = os.path.join(profile_dir, "bundle.bin")
+    with open(bundle_path, "wb") as bf:
+        # 1. Manifest Header
+        write_u32(bf, len(manifest_bytes))
+        bf.write(manifest_bytes)
+
+        # 2. Total Segments
+        write_u32(bf, len(segments))
+
+        # 3. Concatenate all segment payloads
+        for seg in segments:
+            seg_file = os.path.join(profile_dir, seg["filename"])
+            if not os.path.exists(seg_file):
+                print(f"    [!] Error: Missing segment {seg_file}")
+                return None
+            seg_size = os.path.getsize(seg_file)
+            write_u32(bf, seg_size)
+            with open(seg_file, "rb") as sf:
+                bf.write(sf.read())
+
+    bundle_size = os.path.getsize(bundle_path)
+    return bundle_path, bundle_size
 
 
 # ============================================================
@@ -260,6 +315,16 @@ def process_profile(video_path, output_dir, profile_name, width, height):
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
+    # Automatically generate single-request bundle.bin
+    bundle_res = generate_bundle(profile_dir)
+    if bundle_res:
+        _, b_size = bundle_res
+        print(f"     -> Generated bundle.bin ({b_size / 1024:.1f} KB)")
+        
+        # Also copy bundle.bin to the parent chunks folder for universal URL compatibility
+        root_bundle = os.path.join(output_dir, "bundle.bin")
+        shutil.copyfile(bundle_res[0], root_bundle)
+
     print(f"     -> Done: {total_frames} frames ({manifest['duration']:.1f}s) into {len(segments)} segments.")
     return manifest
 
@@ -280,7 +345,7 @@ def discover_videos(base_dir="videos"):
 
     for item in os.listdir(base_dir):
         item_path = os.path.join(base_dir, item)
-        # Case 1: Folder layout (e.g. videos/1/video.mp4 or videos/1/input.mp4)
+        # Case 1: Folder layout (e.g. videos/1/video.mp4)
         if os.path.isdir(item_path):
             vid_id = parse_video_id(item)
             if vid_id is not None:
@@ -290,7 +355,7 @@ def discover_videos(base_dir="videos"):
                     out_dir = os.path.join(item_path, "chunks")
                     video_tasks.append((vid_id, source_file, out_dir))
 
-        # Case 2: Direct file layout (e.g. videos/1.mp4, videos/2.mp4)
+        # Case 2: Direct file layout (e.g. videos/1.mp4)
         elif os.path.isfile(item_path) and item.lower().endswith(('.mp4', '.mov', '.mkv', '.webm')):
             vid_id = parse_video_id(item)
             if vid_id is not None:
@@ -302,21 +367,45 @@ def discover_videos(base_dir="videos"):
 
 
 def should_skip(video_path, output_dir):
-    """Checks if video was already encoded and hasn't changed since."""
+    """Checks if video was already encoded AND has bundle.bin generated."""
     for profile_name in PROFILES.keys():
-        manifest_path = os.path.join(output_dir, profile_name, "manifest.json")
-        if not os.path.exists(manifest_path):
+        profile_dir = os.path.join(output_dir, profile_name)
+        manifest_path = os.path.join(profile_dir, "manifest.json")
+        bundle_path = os.path.join(profile_dir, "bundle.bin")
+
+        # Missing manifest or bundle -> Cannot skip
+        if not os.path.exists(manifest_path) or not os.path.exists(bundle_path):
             return False
+
+        # Source video is newer than the generated manifest -> Cannot skip
         if os.path.getmtime(manifest_path) < os.path.getmtime(video_path):
             return False
+
     return True
+
+
+def try_fast_bundle_upgrade(output_dir):
+    """If segments exist but bundle.bin is missing, assemble bundle.bin instantly without re-encoding."""
+    upgraded = False
+    for profile_name in PROFILES.keys():
+        profile_dir = os.path.join(output_dir, profile_name)
+        manifest_path = os.path.join(profile_dir, "manifest.json")
+        bundle_path = os.path.join(profile_dir, "bundle.bin")
+
+        if os.path.exists(manifest_path) and not os.path.exists(bundle_path):
+            b_res = generate_bundle(profile_dir)
+            if b_res:
+                root_bundle = os.path.join(output_dir, "bundle.bin")
+                shutil.copyfile(b_res[0], root_bundle)
+                print(f"  --> [FAST BUNDLE] Assembled bundle.bin in 0.01s from existing chunks ({b_res[1] / 1024:.1f} KB)")
+                upgraded = True
+    return upgraded
 
 
 def main():
     force_rebuild = "--force" in sys.argv
     tasks = discover_videos("videos")
 
-    # Fallback if someone still keeps video.mp4 in root
     if not tasks and os.path.isfile("video.mp4"):
         tasks = [(1, "video.mp4", "videos/1/chunks")]
 
@@ -331,8 +420,12 @@ def main():
     for vid_id, video_path, out_dir in tasks:
         print(f"\n[VIDEO #{vid_id}] Source: {video_path}")
 
+        # Check if we can do an instant upgrade from existing segments
+        if not force_rebuild and try_fast_bundle_upgrade(out_dir):
+            continue
+
         if not force_rebuild and should_skip(video_path, out_dir):
-            print(f"  --> [SKIPPED] Chunks already up-to-date. (Use --force to re-encode)")
+            print(f"  --> [SKIPPED] Chunks and bundle.bin already up-to-date.")
             continue
 
         manifests = {}
@@ -344,7 +437,7 @@ def main():
             json.dump(manifests, f, indent=2)
 
     print("\n" + "=" * 75)
-    print("ALL VIDEOS SUCCESSFULLY PROCESSED!")
+    print("ALL VIDEOS SUCCESSFULLY PROCESSED AND BUNDLED!")
     print("=" * 75)
 
 
