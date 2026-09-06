@@ -8,57 +8,63 @@ import struct
 import sys
 import numpy as np
 import zstandard as zstd
-from pathlib import Path
 
 # ============================================================
-# CONFIG
+# CONFIGURATION
 # ============================================================
-
-VIDEOS_DIR = "videos"
-OUTPUT_DIR = "chunks"
-
 FPS = 15
-MAX_SECONDS = 45
+MAX_SECONDS = None  # None = No limit (full 45s, 60s, 120s+ duration)
 
-# 288p portrait resolution (optimal for 10-player lag-free mobile/PC)
-WIDTH = 288
-HEIGHT = 512
-PROFILE_NAME = "288p"
+PROFILES = {
+    "288p": (288, 512)
+}
 
-FIRST_SEGMENT_FRAMES = 8
-SEGMENT_FRAMES = 15
+FIRST_SEGMENT_FRAMES = 8   # 0.53s initial keyframe segment for instant (<1s) startup
+SEGMENT_FRAMES = 15        # 1.0s segments
 MAX_SEGMENT_BYTES = 2_000_000
 TILE_SIZE = 8
 DELTA_MAX_RATIO = 0.90
 ZSTD_LEVEL = 3
 
-# Precomputed LUT for instant RGB565 conversion
+# Precomputed Lookup Tables for instant RGB565 conversion
 VALS = np.arange(256, dtype=np.uint16)
 LUT_R = (((VALS * 31 + 127) // 255) << 11).astype(np.uint16)
 LUT_G = (((VALS * 63 + 127) // 255) << 5).astype(np.uint16)
 LUT_B = ((VALS * 31 + 127) // 255).astype(np.uint16)
 
 
+# ============================================================
+# FAST HELPERS
+# ============================================================
+
 def crop_to_portrait(frame, target_width, target_height):
-    h, w = frame.shape[:2]
+    source_height, source_width = frame.shape[:2]
     target_ratio = target_width / target_height
-    source_ratio = w / h
+    source_ratio = source_width / source_height
 
     if source_ratio > target_ratio:
-        new_w = int(h * target_ratio)
-        left = max((w - new_w) // 2, 0)
-        frame = frame[:, left:left + new_w]
+        new_width = int(source_height * target_ratio)
+        left = max((source_width - new_width) // 2, 0)
+        frame = frame[:, left:left + new_width]
     else:
-        new_h = int(w / target_ratio)
-        top = max((h - new_h) // 2, 0)
-        frame = frame[top:top + new_h, :]
+        new_height = int(source_width / target_ratio)
+        top = max((source_height - new_height) // 2, 0)
+        frame = frame[top:top + new_height, :]
 
     return cv2.resize(frame, (target_width, target_height), interpolation=cv2.INTER_AREA)
 
 
-def frame_to_rgb565(frame):
+def frame_to_rgb565_array(frame):
     return (LUT_R[frame[:, :, 2]] | LUT_G[frame[:, :, 1]] | LUT_B[frame[:, :, 0]]).astype("<u2")
 
+
+def write_u32(file, value):
+    file.write(struct.pack("<I", int(value)))
+
+
+# ============================================================
+# VECTORIZED DELTA PAYLOAD
+# ============================================================
 
 def build_delta_payload(prev_tiles, curr_tiles, tiles_y, tiles_x, tile_size):
     diff_mask = np.any(prev_tiles != curr_tiles, axis=(2, 3))
@@ -69,6 +75,7 @@ def build_delta_payload(prev_tiles, curr_tiles, tiles_y, tiles_x, tile_size):
         return struct.pack("<H", 0), 0
 
     sel_tiles = curr_tiles[ys, xs]
+
     tile_dt = np.dtype([
         ('x', 'u1'),
         ('y', 'u1'),
@@ -80,19 +87,20 @@ def build_delta_payload(prev_tiles, curr_tiles, tiles_y, tiles_x, tile_size):
     out_arr['y'] = ys.astype(np.uint8)
     out_arr['pixels'] = sel_tiles
 
-    return struct.pack("<H", count) + out_arr.tobytes(), count
+    payload = struct.pack("<H", count) + out_arr.tobytes()
+    return payload, count
 
 
 def write_segment(profile_dir, segment_index, encoded_frames):
     filename = f"segment_{segment_index:04d}.bin"
     path = os.path.join(profile_dir, filename)
 
-    with open(path, "wb") as f:
-        f.write(struct.pack("<I", len(encoded_frames)))
-        for ftype, fdata in encoded_frames:
-            f.write(bytes([ftype]))
-            f.write(struct.pack("<I", len(fdata)))
-            f.write(fdata)
+    with open(path, "wb") as file:
+        write_u32(file, len(encoded_frames))
+        for frame_type, frame_data in encoded_frames:
+            file.write(bytes([frame_type]))
+            write_u32(file, len(frame_data))
+            file.write(frame_data)
 
     return {
         "index": segment_index,
@@ -102,180 +110,242 @@ def write_segment(profile_dir, segment_index, encoded_frames):
     }
 
 
-def process_video(video_path: Path, video_id: int, force: bool = False):
-    target_dir = Path(OUTPUT_DIR) / str(video_id) / PROFILE_NAME
-    manifest_file = target_dir / "manifest.json"
+# ============================================================
+# PROFILE PROCESSOR
+# ============================================================
 
-    # Skip if already processed and video has not been updated
-    if not force and manifest_file.exists():
-        if manifest_file.stat().st_mtime >= video_path.stat().st_mtime:
-            print(f"[SKIP] Video {video_id} already processed.")
-            return True
+def process_profile(video_path, output_dir, profile_name, width, height):
+    profile_dir = os.path.join(output_dir, profile_name)
+    os.makedirs(profile_dir, exist_ok=True)
 
-    print(f"\n[ENCODING] Video ID {video_id}: {video_path.name}")
-    target_dir.mkdir(parents=True, exist_ok=True)
+    print(f"  --> Encoding Profile: {profile_name} ({width}x{height} @ {FPS}fps)")
 
-    cap = cv2.VideoCapture(str(video_path))
+    cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(f"[ERROR] Could not open {video_path}")
-        return False
+        raise RuntimeError(f"Could not open {video_path}")
 
     source_fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
-    source_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = min(source_frames / source_fps if source_frames > 0 else 0, MAX_SECONDS)
-    expected_frames = max(1, int(math.floor(duration * FPS)))
+    source_frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    source_duration = source_frame_count / source_fps if source_frame_count > 0 else 0
+    duration = source_duration if MAX_SECONDS is None else min(source_duration, MAX_SECONDS)
+    expected_total_frames = max(1, int(math.floor(duration * FPS)))
 
     compressor = zstd.ZstdCompressor(level=ZSTD_LEVEL)
     frames = []
-    step = source_fps / FPS
-    next_sample = 0.0
-    src_idx = 0
+    sample_step = source_fps / FPS
+    next_sample_source_frame = 0.0
+    source_index = 0
 
-    while len(frames) < expected_frames:
+    # 1. Fast frame decoding
+    while len(frames) < expected_total_frames:
         ok, frame = cap.read()
         if not ok:
             break
-        curr_idx = src_idx
-        src_idx += 1
-        if curr_idx + 1e-9 < next_sample:
+
+        current_source_index = source_index
+        source_index += 1
+
+        if current_source_index + 1e-9 < next_sample_source_frame:
             continue
 
-        frame = crop_to_portrait(frame, WIDTH, HEIGHT)
-        frames.append(frame_to_rgb565(frame))
-        next_sample += step
+        frame = crop_to_portrait(frame, width, height)
+        rgb565 = frame_to_rgb565_array(frame)
+        frames.append(rgb565)
+        next_sample_source_frame += sample_step
 
     cap.release()
 
     total_frames = len(frames)
     if total_frames == 0:
-        print(f"[ERROR] No frames extracted from {video_path}")
-        return False
+        raise RuntimeError(f"No frames extracted from {video_path}")
 
-    tiles_y = math.ceil(HEIGHT / TILE_SIZE)
-    tiles_x = math.ceil(WIDTH / TILE_SIZE)
+    # 2. Segment & Delta Encoding Setup
+    tiles_y = math.ceil(height / TILE_SIZE)
+    tiles_x = math.ceil(width / TILE_SIZE)
     total_tiles = tiles_y * tiles_x
-    max_delta_bytes = int(WIDTH * HEIGHT * 2 * DELTA_MAX_RATIO)
+    max_delta_uncompressed_bytes = int(width * height * 2 * DELTA_MAX_RATIO)
+
+    segments = []
+    frame_index = 0
+    segment_index = 0
 
     reshaped_frames = [
         f.reshape(tiles_y, TILE_SIZE, tiles_x, TILE_SIZE).swapaxes(1, 2)
         for f in frames
     ]
 
-    segments = []
-    frame_idx = 0
-    seg_idx = 0
+    while frame_index < total_frames:
+        target_frames = FIRST_SEGMENT_FRAMES if segment_index == 0 else SEGMENT_FRAMES
+        segment_start = frame_index
 
-    while frame_idx < total_frames:
-        target_count = FIRST_SEGMENT_FRAMES if seg_idx == 0 else SEGMENT_FRAMES
-        start_frame = frame_idx
+        keyframe = frames[frame_index]
+        full_compressed = compressor.compress(keyframe.tobytes())
+        encoded_frames = [(0, full_compressed)]
+        segment_size = 1 + 4 + len(full_compressed)
 
-        kf = frames[frame_idx]
-        kf_comp = compressor.compress(kf.tobytes())
-        encoded = [(0, kf_comp)]
-        seg_size = 1 + 4 + len(kf_comp)
+        prev_tiles = reshaped_frames[frame_index]
+        frame_index += 1
+        frames_in_segment = 1
 
-        prev_tiles = reshaped_frames[frame_idx]
-        frame_idx += 1
-        count = 1
+        while frame_index < total_frames and frames_in_segment < target_frames:
+            curr_frame = frames[frame_index]
+            curr_tiles = reshaped_frames[frame_index]
 
-        while frame_idx < total_frames and count < target_count:
-            curr_frame = frames[frame_idx]
-            curr_tiles = reshaped_frames[frame_idx]
+            delta_payload, changed_count = build_delta_payload(
+                prev_tiles, curr_tiles, tiles_y, tiles_x, TILE_SIZE
+            )
 
-            payload, changed_count = build_delta_payload(prev_tiles, curr_tiles, tiles_y, tiles_x, TILE_SIZE)
-
-            if changed_count * (2 + TILE_SIZE * TILE_SIZE * 2) >= max_delta_bytes:
-                ftype = 0
-                fdata = compressor.compress(curr_frame.tobytes())
+            if changed_count * (2 + TILE_SIZE * TILE_SIZE * 2) >= max_delta_uncompressed_bytes:
+                frame_type = 0
+                frame_data = compressor.compress(curr_frame.tobytes())
             else:
-                d_comp = compressor.compress(payload)
+                delta_compressed = compressor.compress(delta_payload)
                 if changed_count < total_tiles * 0.40:
-                    ftype = 1
-                    fdata = d_comp
+                    frame_type = 1
+                    frame_data = delta_compressed
                 else:
-                    kf_comp = compressor.compress(curr_frame.tobytes())
-                    if len(d_comp) <= len(kf_comp) * DELTA_MAX_RATIO:
-                        ftype = 1
-                        fdata = d_comp
+                    kf_compressed = compressor.compress(curr_frame.tobytes())
+                    if len(delta_compressed) <= len(kf_compressed) * DELTA_MAX_RATIO:
+                        frame_type = 1
+                        frame_data = delta_compressed
                     else:
-                        ftype = 0
-                        fdata = kf_comp
+                        frame_type = 0
+                        frame_data = kf_compressed
 
-            proj_size = seg_size + 1 + 4 + len(fdata)
-            if proj_size > MAX_SEGMENT_BYTES:
+            projected_size = segment_size + 1 + 4 + len(frame_data)
+            if projected_size > MAX_SEGMENT_BYTES:
                 break
 
-            encoded.append((ftype, fdata))
-            seg_size = proj_size
+            encoded_frames.append((frame_type, frame_data))
+            segment_size = projected_size
             prev_tiles = curr_tiles
-            frame_idx += 1
-            count += 1
+            frame_index += 1
+            frames_in_segment += 1
 
-        info = write_segment(str(target_dir), seg_idx, encoded)
-        info["start_frame"] = start_frame
-        info["end_frame"] = frame_idx - 1
-        info["duration"] = count / FPS
-        segments.append(info)
-        seg_idx += 1
+        seg_info = write_segment(profile_dir, segment_index, encoded_frames)
+        seg_info["start_frame"] = segment_start
+        seg_info["end_frame"] = frame_index - 1
+        seg_info["duration"] = frames_in_segment / FPS
+        seg_info["keyframes"] = sum(1 for t, _ in encoded_frames if t == 0)
+        seg_info["delta_frames"] = sum(1 for t, _ in encoded_frames if t == 1)
+        segments.append(seg_info)
+        segment_index += 1
 
+    # Write Manifest
     manifest = {
         "version": 3,
-        "video_id": video_id,
-        "profile": PROFILE_NAME,
-        "width": WIDTH,
-        "height": HEIGHT,
+        "profile": profile_name,
+        "width": width,
+        "height": height,
+        "aspect_ratio": "9:16",
         "fps": FPS,
         "total_frames": total_frames,
         "duration": total_frames / FPS,
+        "format": "RGB565_LE",
+        "bytes_per_pixel": 2,
+        "compression": "zstd",
+        "compression_level": ZSTD_LEVEL,
+        "tile_size": TILE_SIZE,
+        "delta_max_ratio": DELTA_MAX_RATIO,
         "segment_count": len(segments),
+        "first_segment_frames": FIRST_SEGMENT_FRAMES,
+        "target_segment_frames": SEGMENT_FRAMES,
+        "max_segment_bytes": MAX_SEGMENT_BYTES,
+        "raw_bytes": width * height * 2 * total_frames,
+        "segment_bytes": sum(s["bytes"] for s in segments),
         "segments": segments
     }
 
-    with open(manifest_file, "w", encoding="utf-8") as f:
+    manifest_path = os.path.join(profile_dir, "manifest.json")
+    with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
 
-    print(f"[DONE] Video {video_id} saved: {total_frames} frames in {len(segments)} segments.")
+    print(f"     -> Done: {total_frames} frames ({manifest['duration']:.1f}s) into {len(segments)} segments.")
+    return manifest
+
+
+# ============================================================
+# MULTI-VIDEO DISCOVERY & INCREMENTAL BUILD
+# ============================================================
+
+def parse_video_id(name: str):
+    match = re.search(r'\d+', name)
+    return int(match.group(0)) if match else None
+
+
+def discover_videos(base_dir="videos"):
+    video_tasks = []
+    if not os.path.exists(base_dir):
+        return video_tasks
+
+    for item in os.listdir(base_dir):
+        item_path = os.path.join(base_dir, item)
+        # Case 1: Folder layout (e.g. videos/1/video.mp4 or videos/1/input.mp4)
+        if os.path.isdir(item_path):
+            vid_id = parse_video_id(item)
+            if vid_id is not None:
+                video_files = [f for f in os.listdir(item_path) if f.lower().endswith(('.mp4', '.mov', '.mkv', '.webm'))]
+                if video_files:
+                    source_file = os.path.join(item_path, video_files[0])
+                    out_dir = os.path.join(item_path, "chunks")
+                    video_tasks.append((vid_id, source_file, out_dir))
+
+        # Case 2: Direct file layout (e.g. videos/1.mp4, videos/2.mp4)
+        elif os.path.isfile(item_path) and item.lower().endswith(('.mp4', '.mov', '.mkv', '.webm')):
+            vid_id = parse_video_id(item)
+            if vid_id is not None:
+                out_dir = os.path.join(base_dir, str(vid_id), "chunks")
+                video_tasks.append((vid_id, item_path, out_dir))
+
+    video_tasks.sort(key=lambda x: x[0])
+    return video_tasks
+
+
+def should_skip(video_path, output_dir):
+    """Checks if video was already encoded and hasn't changed since."""
+    for profile_name in PROFILES.keys():
+        manifest_path = os.path.join(output_dir, profile_name, "manifest.json")
+        if not os.path.exists(manifest_path):
+            return False
+        if os.path.getmtime(manifest_path) < os.path.getmtime(video_path):
+            return False
     return True
 
 
 def main():
-    force = "--force" in sys.argv
-    videos_dir = Path(VIDEOS_DIR)
-    chunks_dir = Path(OUTPUT_DIR)
-    chunks_dir.mkdir(parents=True, exist_ok=True)
+    force_rebuild = "--force" in sys.argv
+    tasks = discover_videos("videos")
 
-    if not videos_dir.exists():
-        videos_dir.mkdir(parents=True, exist_ok=True)
-        print(f"Created '{VIDEOS_DIR}' folder. Place your 1.mp4, 2.mp4 files inside it.")
+    # Fallback if someone still keeps video.mp4 in root
+    if not tasks and os.path.isfile("video.mp4"):
+        tasks = [(1, "video.mp4", "videos/1/chunks")]
+
+    if not tasks:
+        print("No videos found to process in 'videos/' or 'video.mp4'.")
         return
 
-    # Find all mp4 files
-    video_files = list(videos_dir.glob("*.mp4")) + list(videos_dir.glob("*.mov"))
-    if not video_files:
-        print(f"No video files found in '{VIDEOS_DIR}/'.")
-        return
+    print("=" * 75)
+    print(f"FOUND {len(tasks)} VIDEO(S) TO PROCESS")
+    print("=" * 75)
 
-    # Extract ID numbers from filenames (e.g., '1.mp4' -> 1, 'video_02.mp4' -> 2)
-    processed_ids = []
-    for vf in sorted(video_files):
-        match = re.search(r'\d+', vf.stem)
-        video_id = int(match.group()) if match else None
-        if video_id is not None:
-            ok = process_video(vf, video_id, force=force)
-            if ok:
-                processed_ids.append(video_id)
+    for vid_id, video_path, out_dir in tasks:
+        print(f"\n[VIDEO #{vid_id}] Source: {video_path}")
 
-    # Generate master index.json for Roblox
-    index_manifest = {
-        "count": len(processed_ids),
-        "video_ids": sorted(processed_ids)
-    }
-    with open(chunks_dir / "index.json", "w", encoding="utf-8") as f:
-        json.dump(index_manifest, f, indent=2)
+        if not force_rebuild and should_skip(video_path, out_dir):
+            print(f"  --> [SKIPPED] Chunks already up-to-date. (Use --force to re-encode)")
+            continue
 
-    print(f"\n==================================================")
-    print(f"ALL VIDEOS COMPLETE: {len(processed_ids)} videos ready in chunks/")
-    print(f"==================================================")
+        manifests = {}
+        for profile_name, (w, h) in PROFILES.items():
+            manifests[profile_name] = process_profile(video_path, out_dir, profile_name, w, h)
+
+        # Write top-level manifest
+        with open(os.path.join(out_dir, "manifest.json"), "w", encoding="utf-8") as f:
+            json.dump(manifests, f, indent=2)
+
+    print("\n" + "=" * 75)
+    print("ALL VIDEOS SUCCESSFULLY PROCESSED!")
+    print("=" * 75)
 
 
 if __name__ == "__main__":
