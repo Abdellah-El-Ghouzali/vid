@@ -32,32 +32,33 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: "requirements.txt"
 
       - name: Install dependencies
         run: |
-          python -m pip install \
-            --disable-pip-version-check \
-            --prefer-binary \
-            opencv-python-headless numpy zstandard
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            python -m pip install -r requirements.txt
+          else
+            python -m pip install --prefer-binary opencv-python-headless numpy zstandard
+          fi
 
-      - name: Process all videos
+      - name: Process and bundle all videos
         run: |
           python process.py
 
-      - name: Commit and push generated chunks
+      - name: Commit and push generated chunks & bundles
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Stage new, modified, and deleted segments cleanly
+          # Stage new bundles and chunks cleanly
           git add -A videos/
           git add -A chunks/
 
           if git diff --cached --quiet; then
-            echo "No changes detected in chunks."
+            echo "No changes detected in chunks or bundles."
           else
-            git commit -m "Generate streaming chunks for videos [skip ci]"
+            git commit -m "Generate streaming chunks and bundle.bin [skip ci]"
             git pull --rebase origin ${{ github.ref_name }} || true
             git push
           fi
