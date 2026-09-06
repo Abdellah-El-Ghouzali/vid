@@ -20,33 +20,22 @@ PROFILES = {
     "576p": (576, 1024)
 }
 
-# ============================================================
-# SEGMENTS
-# ============================================================
-
-# First segment is intentionally short.
+# First segment: 8 frames
 FIRST_SEGMENT_FRAMES = 8
 
-# Normal segment length.
+# Normal segments: 15 frames = 1 second at 15 FPS
 SEGMENT_FRAMES = 15
 
-# Safety limit for one segment.
+# Maximum size of one segment
 MAX_SEGMENT_BYTES = 2_000_000
 
-# ============================================================
-# DELTA ENCODING
-# ============================================================
-
+# Tile size for delta encoding
 TILE_SIZE = 8
 
-# Delta is used only if it is smaller than this ratio
-# of the full-frame compressed size.
+# Use delta only if it is significantly smaller
 DELTA_MAX_RATIO = 0.90
 
-# ============================================================
-# COMPRESSION
-# ============================================================
-
+# Zstandard compression
 ZSTD_LEVEL = 3
 
 OUTPUT_DIR = "chunks"
@@ -250,9 +239,7 @@ def build_delta_payload(
     payload.extend(
         struct.pack(
             "<H",
-            len(
-                changed_tiles
-            )
+            len(changed_tiles)
         )
     )
 
@@ -318,7 +305,7 @@ def write_segment(
 
     uint32 frame_count
 
-    repeated:
+    For every frame:
 
         uint8 frame_type
             0 = full/keyframe
@@ -345,9 +332,7 @@ def write_segment(
 
         write_u32(
             file,
-            len(
-                encoded_frames
-            )
+            len(encoded_frames)
         )
 
         for (
@@ -363,9 +348,7 @@ def write_segment(
 
             write_u32(
                 file,
-                len(
-                    frame_data
-                )
+                len(frame_data)
             )
 
             file.write(
@@ -379,9 +362,7 @@ def write_segment(
     return {
         "index": segment_index,
         "filename": filename,
-        "frame_count": len(
-            encoded_frames
-        ),
+        "frame_count": len(encoded_frames),
         "bytes": size
     }
 
@@ -413,32 +394,27 @@ def process_profile(
         "PROCESSING:",
         profile_name
     )
-
     print(
         "Resolution:",
         f"{width}x{height}"
     )
-
     print(
         "FPS:",
         FPS
     )
-
     print(
-        "First segment frames:",
+        "First segment:",
         FIRST_SEGMENT_FRAMES
     )
-
     print(
-        "Normal segment frames:",
+        "Normal segment:",
         SEGMENT_FRAMES
     )
-
     print(
-        "Max segment bytes:",
-        MAX_SEGMENT_BYTES
+        "Max segment:",
+        MAX_SEGMENT_BYTES,
+        "bytes"
     )
-
     print("=" * 70)
 
     # --------------------------------------------------------
@@ -450,7 +426,6 @@ def process_profile(
     )
 
     if not cap.isOpened():
-
         raise RuntimeError(
             "Could not open video.mp4"
         )
@@ -463,7 +438,6 @@ def process_profile(
         not source_fps
         or source_fps <= 0
     ):
-
         source_fps = 30.0
 
     source_frame_count = int(
@@ -535,12 +509,12 @@ def process_profile(
     source_index = 0
 
     # --------------------------------------------------------
-    # READ & CONVERT FRAMES
+    # READ VIDEO
     # --------------------------------------------------------
 
     while (
-        len(frames) <
-        expected_total_frames
+        len(frames)
+        < expected_total_frames
     ):
 
         ok, frame = cap.read()
@@ -555,10 +529,9 @@ def process_profile(
         source_index += 1
 
         if (
-            current_source_index +
-            1e-9
-            <
-            next_sample_source_frame
+            current_source_index
+            + 1e-9
+            < next_sample_source_frame
         ):
             continue
 
@@ -598,7 +571,6 @@ def process_profile(
     cap.release()
 
     if not frames:
-
         raise RuntimeError(
             "No frames generated."
         )
@@ -627,11 +599,10 @@ def process_profile(
                 SEGMENT_FRAMES
             )
 
-        segment_start =
-            frame_index
+        segment_start = frame_index
 
         # ----------------------------------------------------
-        # KEYFRAME
+        # FIRST FRAME = KEYFRAME
         # ----------------------------------------------------
 
         keyframe = frames[
@@ -666,12 +637,11 @@ def process_profile(
         frames_in_segment = 1
 
         # ----------------------------------------------------
-        # DELTAS / FULL FRAMES
+        # ADD MORE FRAMES
         # ----------------------------------------------------
 
         while (
-            frame_index <
-                total_frames
+            frame_index < total_frames
             and
             frames_in_segment <
                 target_frames
@@ -681,6 +651,7 @@ def process_profile(
                 frame_index
             ]
 
+            # Delta
             delta_payload = (
                 build_delta_payload(
                     previous_frame,
@@ -696,6 +667,7 @@ def process_profile(
                 )
             )
 
+            # Full frame fallback
             current_full_compressed = (
                 compressor.compress(
                     current_frame.tobytes()
@@ -706,7 +678,8 @@ def process_profile(
                 len(delta_compressed)
                 <=
                 len(current_full_compressed)
-                * DELTA_MAX_RATIO
+                *
+                DELTA_MAX_RATIO
             ):
 
                 frame_type = 1
@@ -754,6 +727,10 @@ def process_profile(
             frame_index += 1
 
             frames_in_segment += 1
+
+        # ----------------------------------------------------
+        # WRITE SEGMENT
+        # ----------------------------------------------------
 
         segment_info = (
             write_segment(
@@ -857,7 +834,8 @@ def process_profile(
             total_frames,
 
         "duration":
-            total_frames / FPS,
+            total_frames /
+            FPS,
 
         "format":
             "RGB565_LE",
@@ -918,7 +896,9 @@ def process_profile(
 
     print()
     print("=" * 70)
-    print("PROFILE COMPLETE")
+    print(
+        "PROFILE COMPLETE"
+    )
     print("=" * 70)
 
     print(
@@ -1006,7 +986,9 @@ def main():
 
     print()
     print("=" * 70)
-    print("BUILD COMPLETE")
+    print(
+        "BUILD COMPLETE"
+    )
     print("=" * 70)
 
 
